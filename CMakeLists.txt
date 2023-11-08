@@ -47,10 +47,12 @@ add_custom_target(
 )
 
 # add the executable
-add_executable(m2c 
+add_executable(m2c_linsolve
 Main.cpp
 IoData.cpp
 SpaceVariable.cpp
+MeshGenerator.cpp
+GlobalMeshInfo.cpp
 GradientCalculatorCentral.cpp
 GradientCalculatorFD3.cpp
 Interpolator.cpp
@@ -58,5 +60,5 @@ SpaceOperatorLite.cpp
 Utils.cpp)
 
 # link to libraries
-target_link_libraries(m2c petsc mpi parser)
-add_dependencies(m2c extern_lib)
+target_link_libraries(m2c_linsolve petsc mpi parser)
+add_dependencies(m2c_linsolve extern_lib)

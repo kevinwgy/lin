@@ -5,13 +5,17 @@
 
 #ifndef _SPACEOPERATOR_LITE_H_
 #define _SPACEOPERATOR_LITE_H_
+#include <IoData.h>
 #include <GlobalMeshInfo.h>
+#include <SpaceVariable.h>
+#include <GhostPoint.h>
+using std::vector;
 
 /*******************************************
- * class SpaceOperator drives computations
+ * class SpaceOperatorLite drives computations
  * that require domain/mesh information
  ******************************************/
-class SpaceOperator
+class SpaceOperatorLite
 {
   MPI_Comm&                 comm;
   DataManagers3D&           dm_all;
@@ -38,9 +42,9 @@ class SpaceOperator
   SpaceVariable3D Tag;
 
 public:
-  SpaceOperator(MPI_Comm &comm_, DataManagers3D &dm_all_, IoData &iod_,
+  SpaceOperatorLite(MPI_Comm &comm_, DataManagers3D &dm_all_, IoData &iod_,
                 GlobalMeshInfo &global_mesh_);
-  ~SpaceOperator();
+  ~SpaceOperatorLite();
 
   SpaceVariable3D& GetMeshCoordinates() {return coordinates;}
   SpaceVariable3D& GetMeshDeltaXYZ()    {return delta_xyz;}

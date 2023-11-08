@@ -30,7 +30,7 @@ SpaceOperatorLite::SpaceOperatorLite(MPI_Comm &comm_, DataManagers3D &dm_all_, I
   SetupMesh(global_mesh.x_glob, global_mesh.y_glob, global_mesh.z_glob,
             global_mesh.dx_glob, global_mesh.dy_glob, global_mesh.dz_glob);
 
-  CreateGhostNodeLists(screenout); //create ghost_nodes_inner and ghost_nodes_outer
+  CreateGhostNodeLists(true); //create ghost_nodes_inner and ghost_nodes_outer
 
 }
 
@@ -304,8 +304,8 @@ void SpaceOperatorLite::CreateGhostNodeLists(bool screenout)
                                         proj, out_normal, 0));
 
           // collect ghost nodes along overset boundaries if any (FACE only)
-          if(bcType==MeshData::OVERSET && counter==1)
-            ghost_overset.push_back(std::make_pair(Int3(i,j,k), Vec5D(0.0)));
+          //if(bcType==MeshData::OVERSET && counter==1)
+            //ghost_overset.push_back(std::make_pair(Int3(i,j,k), Vec5D(0.0)));
 
         } 
         else //inside physical domain
@@ -341,9 +341,9 @@ void SpaceOperatorLite::CreateGhostNodeLists(bool screenout)
   }
 
   // figure out whether the entire domain has overset ghosts...
-  int overset_count = ghost_overset.size();
+  int overset_count = 0; //ghost_overset.size();
   MPI_Allreduce(MPI_IN_PLACE, &overset_count, 1, MPI_INT, MPI_SUM, comm);
-  domain_has_overset = overset_count>0;
+  //domain_has_overset = overset_count>0;
 
 
   coordinates.RestoreDataPointerToLocalVector();

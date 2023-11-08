@@ -6,7 +6,6 @@
 #include <iostream>
 #include <Utils.h>
 #include <time.h>
-#include <version.h>
 #include <stdio.h>
 #include <cstring>
 #include <cmath> //floor
@@ -245,46 +244,8 @@ const string getCurrentDateTime()
 
 //--------------------------------------------------
 // Print logo 
-void printHeader(int argc, char *argv[])
+void printHeader([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 {
-  int size, rank;
-  MPI_Comm_size(m2c_comm, &size);
-  MPI_Comm_rank(m2c_comm, &rank);
-  if(!rank) {
-    cout << endl;
-    cout << "\033[0;36m                                      _..._      \033[0m" << endl;
-    cout << "\033[0;36m                      .-''-.       .-'_..._''.   \033[0m" << endl;
-    cout << "\033[0;36m   __  __   ___     .' .-.  )    .' .'      '.\\  \033[0m" << endl;
-    cout << "\033[0;36m  |  |/  `.'   `.  / .'  / /    / .'             \033[0m" << endl;
-    cout << "\033[0;36m  |   .-.  .-.   '(_/   / /    . '               \033[0m" << endl;
-    cout << "\033[0;36m  |  |  |  |  |  |     / /     | |               \033[0m" << endl;
-    cout << "\033[0;36m  |  |  |  |  |  |    / /      | |               \033[0m" << endl;
-    cout << "\033[0;36m  |  |  |  |  |  |   . '       . '               \033[0m" << endl;
-    cout << "\033[0;36m  |  |  |  |  |  |  / /    _.-')\\ '.          .  \033[0m" << endl;
-    cout << "\033[0;36m  |__|  |__|  |__|.' '  _.'.-''  '. `._____.-'/  \033[0m" << endl;
-    cout << "\033[0;36m                 /  /.-'_.'        `-.______ /   \033[0m" << endl;
-    cout << "\033[0;36m                /    _.'                    `    \033[0m" << endl;
-    cout << "\033[0;36m               ( _.-'                            \033[0m" << endl;
-    cout << endl;
-    cout << "Revision: " << GIT_REV << " | " << "Branch: " << GIT_BRANCH << " | " << "Tag: " << GIT_TAG << endl;
-    cout << "Computation started at: " << getCurrentDateTime() << endl;
-    cout << "Using " << size << " processor cores (including concurrent programs)." << endl;
-    cout << "Command:";
-    for(int i=0; i<argc; i++)
-      cout << " " << argv[i];
-    cout << endl;
-    cout << endl;
-    cout << "\033[0;32m==========================================\033[0m" << endl;
-    cout << "\033[0;32m                 START                    \033[0m" << endl;
-    cout << "\033[0;32m==========================================\033[0m" << endl;
-    cout << endl;
-    cout.flush();
-  } else 
-    sleep(0.1); //wait until the message gets printed to the screen
-
-  //MPI_Barrier(m2c_comm); //not friendly to concurrent programs
-  //
-  return;
 }
 
 //--------------------------------------------------

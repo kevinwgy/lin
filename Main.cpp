@@ -7,6 +7,10 @@
 #include <petscdmda.h> //PETSc
 #include <MeshGenerator.h>
 #include <SpaceOperatorLite.h>
+#include <Interpolator.h>
+#include <GradientCalculatorCentral.h>
+#include <GradientCalculatorFD3.h>
+#include <GhostPoint.h>
 
 //#include <limits>
 
@@ -18,6 +22,7 @@
 
 
 int verbose;
+MPI_Comm m2c_comm;
 clock_t start_time;
 
 /*************************************
@@ -30,6 +35,7 @@ int main(int argc, char* argv[])
   //! Initialize MPI 
   MPI_Init(NULL,NULL); //called together with all concurrent programs -> MPI_COMM_WORLD
   MPI_Comm comm = MPI_COMM_WORLD;
+  m2c_comm = comm;
 
   //! Read user's input file (read the parameters)
   IoData iod(argc, argv);
@@ -41,9 +47,6 @@ int main(int argc, char* argv[])
   vector<double> xcoords, dx, ycoords, dy, zcoords, dz;
   MeshGenerator meshgen;
   meshgen.ComputeMeshCoordinatesAndDeltas(iod.mesh, xcoords, ycoords, zcoords, dx, dy, dz);
-  domain_diagonal = sqrt(pow(iod.mesh.xmax - iod.mesh.x0, 2) +
-                         pow(iod.mesh.ymax - iod.mesh.y0, 2) +
-                         pow(iod.mesh.zmax - iod.mesh.z0, 2));
   
   //! Setup global mesh info
   GlobalMeshInfo global_mesh(xcoords, ycoords, zcoords, dx, dy, dz);
@@ -77,6 +80,7 @@ int main(int argc, char* argv[])
   /*************************************
    * Main Loop 
    ************************************/
+  double t = 0.0;
   print("\n");
   print("----------------------------\n");
   print("--       Main Loop        --\n");

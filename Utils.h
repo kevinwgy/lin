@@ -46,7 +46,7 @@ void mpi_barrier();
 const string getCurrentDateTime();
 //--------------------------------------------------
 //! Print logo and code version
-void printHeader(int argc, char* argv[]);
+void printHeader([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]);
 //--------------------------------------------------
 //! Call MPI_Finalize and exit (with error)
 void exit_mpi();
