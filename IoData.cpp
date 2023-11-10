@@ -3554,6 +3554,31 @@ void SpecialToolsData::setup(const char *name, ClassAssigner *father)
 
 //------------------------------------------------------------------------------
 
+PETScKSPOptionsData::PETScKSPOptionsData()
+{
+  ksp = KSP_DEFAULT;
+  pc  = PC_DEFAULT;
+}
+
+//------------------------------------------------------------------------------
+
+void PETScKSPOptionsData::setup(const char *name, ClassAssigner *father)
+{
+
+  ClassAssigner *ca = new ClassAssigner(name, 2, father);
+
+  new ClassToken<PETScKSPOptionsData> (ca, "Type", this,
+     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::ksp), 3,
+     "Default", 0, "GMRes", 1, "FlexibleGMRes", 2);
+
+  new ClassToken<PETScKSPOptionsData> (ca, "Preconditioner", this,
+     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::ksp), 7,
+     "Default", 0, "None", 1, "Jacobi", 2, "IncompleteLU", 3, "IncompleteCholesky", 4,
+     "MultiGridExortic", 5, "MultiGrid", 6);
+}
+
+//------------------------------------------------------------------------------
+
 IoData::IoData(int argc, char** argv)
 {
   //Should NOT call functions in Utils (e.g., print(), exit_mpi()) because the
@@ -3680,6 +3705,7 @@ void IoData::setupCmdFileVariables()
 
   terminal_visualization.setup("TerminalVisualization");
 
+  petsc_ksp_options.setup("LinearSystemSolver");
 }
 
 //------------------------------------------------------------------------------

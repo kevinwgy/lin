@@ -12,6 +12,8 @@
 #include <GradientCalculatorFD3.h>
 #include <GhostPoint.h>
 
+#include <petscksp.h>
+
 //#include <limits>
 
 // for timing
@@ -19,6 +21,63 @@
 //using std::chrono::duration_cast;
 //using std::chrono::duration;
 //using std::chrono::milliseconds;
+
+/*
+int ComputeRHS(KSP ksp, Vec b, void *ctx)
+{
+  double*** b_array;
+  DMDAVecGetArray(dm, b, &b_array);
+
+  ctx->
+
+  
+
+}
+*/
+
+int ComputeRHS(KSP ksp, Vec b, void *ctx)
+{
+  PetscInt       i, j, k, mx, my, mz, xm, ym, zm, xs, ys, zs;
+  DM             dm;
+  PetscScalar    Hx, Hy, Hz, HxHydHz, HyHzdHx, HxHzdHy;
+  PetscScalar ***barray;
+
+  PetscFunctionBeginUser;
+  KSPGetDM(ksp, &dm);
+  DMDAGetInfo(dm, 0, &mx, &my, &mz, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  Hx      = 1.0 / (PetscReal)(mx - 1);
+  Hy      = 1.0 / (PetscReal)(my - 1);
+  Hz      = 1.0 / (PetscReal)(mz - 1);
+  HxHydHz = Hx * Hy / Hz;
+  HxHzdHy = Hx * Hz / Hy;
+  HyHzdHx = Hy * Hz / Hx;
+  DMDAGetCorners(dm, &xs, &ys, &zs, &xm, &ym, &zm);
+  DMDAVecGetArray(dm, b, &barray);
+
+  for (k = zs; k < zs + zm; k++) {
+    for (j = ys; j < ys + ym; j++) {
+      for (i = xs; i < xs + xm; i++) {
+        if (i == 0 || j == 0 || k == 0 || i == mx - 1 || j == my - 1 || k == mz - 1) {
+          barray[k][j][i] = 2.0 * (HxHydHz + HxHzdHy + HyHzdHx);
+        } else {
+          barray[k][j][i] = Hx * Hy * Hz;
+        }
+      }
+    }
+  }
+  DMDAVecRestoreArray(dm, b, &barray);
+  return 0;
+}
+
+
+
+
+
+
+
+
+
+
 
 
 int verbose;
@@ -77,14 +136,23 @@ int main(int argc, char* argv[])
   //! Allocate memory for V and ID 
   SpaceVariable3D V(comm, &(dms.ghosted1_5dof)); //!< primitive state variables
 
+
   /*************************************
    * Main Loop 
    ************************************/
   double t = 0.0;
   print("\n");
   print("----------------------------\n");
-  print("--       Main Loop        --\n");
+  print("--          Start         --\n");
   print("----------------------------\n");
+
+  KSP ksp;
+  KSPSetDM(ksp, dms.ghosted1_1dof);
+  //KSPSetComputeInitialGuess(ksp, ComputeInitialGuess, NULL);
+  KSPSetComputeRHS(ksp, ComputeRHS, NULL);
+  //KSPSetComputeOperators(ksp, ComputeMatrix, NULL);
+  
+
 
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");

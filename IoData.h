@@ -1627,6 +1627,20 @@ struct SpecialToolsData {
 
 //------------------------------------------------------------------------------
 
+struct PETScKSPOptionsData {
+
+  enum KSPType {KSP_DEFAULT = 0, GMRES = 1, FLEXIBLE_GMRES = 2} ksp;
+  enum PCType {PC_DEFAULT = 0, NONE = 1, JACOBI = 2, INCOMPLTE_LU = 3, INCOMPLETE_CHOLESKY = 4,
+               MG_2LEVEL_EXOTIC = 5, MG = 6} pc;
+
+  PETScKSPOptionsData();
+  ~PETScKSPOptionsData() {}
+
+  void setup(const char *, ClassAssigner * = 0);
+};
+
+//------------------------------------------------------------------------------
+
 class IoData {
 
   char *cmdFileName;
@@ -1663,6 +1677,8 @@ public:
   SpecialToolsData special_tools;
 
   TerminalVisualizationData terminal_visualization;
+
+  PETScKSPOptionsData petsc_ksp_options;
 
 public:
 

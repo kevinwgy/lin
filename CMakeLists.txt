@@ -57,6 +57,7 @@ GradientCalculatorCentral.cpp
 GradientCalculatorFD3.cpp
 Interpolator.cpp
 SpaceOperatorLite.cpp
+LinearSystemSolver.cpp
 Utils.cpp)
 
 # link to libraries
