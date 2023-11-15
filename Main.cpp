@@ -11,6 +11,7 @@
 #include <GradientCalculatorCentral.h>
 #include <GradientCalculatorFD3.h>
 #include <GhostPoint.h>
+#include <LinearSystemSolver.h>
 
 #include <petscksp.h>
 
@@ -22,67 +23,18 @@
 //using std::chrono::duration;
 //using std::chrono::milliseconds;
 
-/*
-int ComputeRHS(KSP ksp, Vec b, void *ctx)
-{
-  double*** b_array;
-  DMDAVecGetArray(dm, b, &b_array);
-
-  ctx->
-
-  
-
-}
-*/
-
-int ComputeRHS(KSP ksp, Vec b, void *ctx)
-{
-  PetscInt       i, j, k, mx, my, mz, xm, ym, zm, xs, ys, zs;
-  DM             dm;
-  PetscScalar    Hx, Hy, Hz, HxHydHz, HyHzdHx, HxHzdHy;
-  PetscScalar ***barray;
-
-  PetscFunctionBeginUser;
-  KSPGetDM(ksp, &dm);
-  DMDAGetInfo(dm, 0, &mx, &my, &mz, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-  Hx      = 1.0 / (PetscReal)(mx - 1);
-  Hy      = 1.0 / (PetscReal)(my - 1);
-  Hz      = 1.0 / (PetscReal)(mz - 1);
-  HxHydHz = Hx * Hy / Hz;
-  HxHzdHy = Hx * Hz / Hy;
-  HyHzdHx = Hy * Hz / Hx;
-  DMDAGetCorners(dm, &xs, &ys, &zs, &xm, &ym, &zm);
-  DMDAVecGetArray(dm, b, &barray);
-
-  for (k = zs; k < zs + zm; k++) {
-    for (j = ys; j < ys + ym; j++) {
-      for (i = xs; i < xs + xm; i++) {
-        if (i == 0 || j == 0 || k == 0 || i == mx - 1 || j == my - 1 || k == mz - 1) {
-          barray[k][j][i] = 2.0 * (HxHydHz + HxHzdHy + HyHzdHx);
-        } else {
-          barray[k][j][i] = Hx * Hy * Hz;
-        }
-      }
-    }
-  }
-  DMDAVecRestoreArray(dm, b, &barray);
-  return 0;
-}
-
-
-
-
-
-
-
-
-
-
-
 
 int verbose;
 MPI_Comm m2c_comm;
 clock_t start_time;
+
+
+//-------------------------------------------------
+// Example cases
+void BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
+                          vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X);
+//-------------------------------------------------
+
 
 /*************************************
  * Main Function
@@ -146,13 +98,21 @@ int main(int argc, char* argv[])
   print("--          Start         --\n");
   print("----------------------------\n");
 
-  KSP ksp;
-  KSPSetDM(ksp, dms.ghosted1_1dof);
-  //KSPSetComputeInitialGuess(ksp, ComputeInitialGuess, NULL);
-  KSPSetComputeRHS(ksp, ComputeRHS, NULL);
-  //KSPSetComputeOperators(ksp, ComputeMatrix, NULL);
   
+  LinearSystemSolver linsys(comm, dms.ghosted1_1dof, iod.petsc_ksp_options);
 
+  vector<RowEntries> row_entries;
+  SpaceVariable3D X(comm, &(dms.ghosted1_1dof));
+  SpaceVariable3D B(comm, &(dms.ghosted1_1dof));
+
+  BuildLinearSystemEx1(spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+
+  linsys.SetLinearOperator(row_entries);
+  linsys.Solve(B,X);
+
+
+  X.StoreMeshCoordinates(spo.GetMeshCoordinates());
+  X.WriteToVTRFile("X.vtr","x");
 
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");
@@ -166,7 +126,10 @@ int main(int argc, char* argv[])
   //! finalize 
   //! In general, "Destroy" should be called for classes that store Petsc DMDA data (which need to be "destroyed").
   
-  V.Destroy();
+  linsys.Destroy();
+  X.Destroy();
+  B.Destroy();
+
   spo.Destroy();
   if(grad) {
     grad->Destroy();
@@ -187,3 +150,32 @@ int main(int argc, char* argv[])
 
 //--------------------------------------------------------------
 
+
+void
+BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
+                     std::vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X)
+{
+  int i0, j0, k0, ii0, jj0, kk0;
+  int imax, jmax, kmax, iimax, jjmax, kkmax;
+  coordinates.GetCornerIndices(&i0, &j0, &k0, &imax, &jmax, &kmax);
+  coordinates.GetGhostedCornerIndices(&ii0, &jj0, &kk0, &iimax, &jjmax, &kkmax);
+
+  [[maybe_unused]] Vec3D*** coords = (Vec3D***)coordinates.GetDataPointer();
+  [[maybe_unused]] Vec3D*** dxyz   = (Vec3D***)delta_xyz.GetDataPointer();
+  
+  [[maybe_unused]] double*** xx = X.GetDataPointer();
+  [[maybe_unused]] double*** bb = B.GetDataPointer();
+  
+
+
+  X.RestoreDataPointerAndInsert();
+  B.RestoreDataPointerAndInsert();
+
+  coordinates.RestoreDataPointerToLocalVector();
+  delta_xyz.RestoreDataPointerToLocalVector();
+
+  [[maybe_unused]] int n = row_entries.size();
+}
+
+
+//--------------------------------------------------------------

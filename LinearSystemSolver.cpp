@@ -4,16 +4,39 @@
  ************************************************************************/
 
 #include<LinearSystemSolver.h>
+#include<cassert>
 
 //-----------------------------------------------------
 
 LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptionsData &ksp_input)
-                  : comm(comm_), ctx(NULL), has_linear_operator(false)
+                  : comm(comm_)
 {
   DMClone(dm_, &dm);
+  DMSetMatType(dm, MATAIJ);
+  DMSetMatrixPreallocateOnly(dm, PETSC_TRUE);
+  DMCreateMatrix(dm, &A);
+
   KSPCreate(comm, &ksp);
   KSPSetDM(ksp, dm);
-  KSPSetInitialGuessNonzero(ksp, true); //!< initial guess is passed to KSPSolve
+  KSPSetInitialGuessNonzero(ksp, PETSC_TRUE); //!< initial guess is passed to KSPSolve
+
+  // -------------------------------------------------------
+  // Get info about the domain decomposition
+  DMDAGetInfo(dm, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &dof, NULL, NULL, NULL, NULL, NULL);
+ 
+  int nx(0), ny(0), nz(0);
+  DMDAGetCorners(dm, &i0, &j0, &k0, &nx, &ny, &nz);
+  imax = i0 + nx;
+  jmax = j0 + ny;
+  kmax = k0 + nz;
+
+  int ghost_nx(0), ghost_ny(0), ghost_nz(0);
+  DMDAGetGhostCorners(dm, &ii0, &jj0, &kk0, &ghost_nx, &ghost_ny, &ghost_nz);
+  iimax = ii0 + ghost_nx;
+  jjmax = jj0 + ghost_ny;
+  kkmax = kk0 + ghost_nz;
+  // -------------------------------------------------------
+
 
   if(ksp_input.ksp == PETScKSPOptionsData::KSP_DEFAULT) {
     /* nothing to do */
@@ -30,8 +53,9 @@ LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptions
     /* nothing to do*/
   } 
   else {
-    PC* pc_ptr;
+    PC* pc_ptr(NULL);
     KSPGetPC(ksp, pc_ptr);
+    assert(pc_ptr);
 
     if(ksp_input.pc == PETScKSPOptionsData::PC_NONE)
       PCSetType(*pc_ptr, PCNONE);
@@ -66,14 +90,22 @@ LinearSystemSolver::Destroy()
 {
   DMDestroy(&dm);
   KSPDestroy(&ksp);
+  MatDestroy(&A);
 }
 
 //-----------------------------------------------------
 
 void
-LinearSystemSolver::SetLinearOperator(void *)
+LinearSystemSolver::SetLinearOperator(vector<RowEntries>& row_entries)
 {
-I AM HERE
+  for(auto&& entries : row_entries)
+    MatSetValuesStencil(A, 1, &entries.row, entries.cols.size(), entries.cols.data(),
+                        entries.vals.data(), ADD_VALUES);
+
+  MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+
+  KSPSetOperators(ksp, A, A);  
 }
 
 //-----------------------------------------------------
@@ -81,6 +113,26 @@ I AM HERE
 int
 LinearSystemSolver::Solve(SpaceVariable3D &b, SpaceVariable3D &x)
 {
+  // --------------------------------------------------
+  // Sanity checks
+  int dof_ = b.NumDOF();
+  assert(dof_ == dof);
+  dof_ = x.NumDOF();
+  assert(dof_ == dof);
+
+  int i0_, j0_, k0_, imax_, jmax_, kmax_;
+  b.GetCornerIndices(&i0_, &j0_, &k0_, &imax_, &jmax_, &kmax_);
+  assert(i0_==i0 && j0_==j0 && k0_==k0 && imax_==imax && jmax_==jmax && kmax_==kmax);
+  x.GetCornerIndices(&i0_, &j0_, &k0_, &imax_, &jmax_, &kmax_);
+  assert(i0_==i0 && j0_==j0 && k0_==k0 && imax_==imax && jmax_==jmax && kmax_==kmax);
+
+  b.GetGhostedCornerIndices(&i0_, &j0_, &k0_, &imax_, &jmax_, &kmax_);
+  assert(i0_==ii0 && j0_==jj0 && k0_==kk0 && imax_==iimax && jmax_==jjmax && kmax_==kkmax);
+  x.GetGhostedCornerIndices(&i0_, &j0_, &k0_, &imax_, &jmax_, &kmax_);
+  assert(i0_==ii0 && j0_==jj0 && k0_==kk0 && imax_==iimax && jmax_==jjmax && kmax_==kkmax);
+  // ---------------------------------------------------
+  
+
   Vec &bb(b.GetRefToGlobalVec());
   Vec &xx(x.GetRefToGlobalVec());
 
