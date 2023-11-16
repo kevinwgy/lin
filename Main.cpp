@@ -85,9 +85,6 @@ int main(int argc, char* argv[])
   if(true) //may add more choices later
     grad = new GradientCalculatorCentral(comm, dms, spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), *interp);
   
-  //! Allocate memory for V and ID 
-  SpaceVariable3D V(comm, &(dms.ghosted1_5dof)); //!< primitive state variables
-
 
   /*************************************
    * Main Loop 
@@ -105,14 +102,42 @@ int main(int argc, char* argv[])
   SpaceVariable3D X(comm, &(dms.ghosted1_1dof));
   SpaceVariable3D B(comm, &(dms.ghosted1_1dof));
 
+  mpi_barrier();
+  clock_t timing1 = clock(); //for timing purpose only
   BuildLinearSystemEx1(spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+  mpi_barrier();
+  print("Computation time for building A, B, X outside PETSc: %f sec.\n",
+        ((double)(clock()-timing1))/CLOCKS_PER_SEC);
 
+/* 
+  int mpi_rank;
+  MPI_Comm_rank(comm, &mpi_rank);
+  for(auto&& entries : row_entries) 
+    for(unsigned i=0; i<entries.cols.size(); i++)
+      fprintf(stdout,"[%d] Row (%d,%d,%d): Col (%d,%d,%d), v = %e.\n",
+              mpi_rank, entries.row.i, entries.row.j, entries.row.k,
+              entries.cols[i].i, entries.cols[i].j, entries.cols[i].k, entries.vals[i]);
+*/
+
+  mpi_barrier(); timing1 = clock();
   linsys.SetLinearOperator(row_entries);
+  mpi_barrier();
+  print("Computation time for building A in PETSc: %f sec.\n",
+        ((double)(clock()-timing1))/CLOCKS_PER_SEC);
+
+  mpi_barrier(); timing1 = clock();
   linsys.Solve(B,X);
+  mpi_barrier();
+  print("Computation time for solving AX=B by PETSc: %f sec.\n",
+        ((double)(clock()-timing1))/CLOCKS_PER_SEC);
 
 
   X.StoreMeshCoordinates(spo.GetMeshCoordinates());
   X.WriteToVTRFile("X.vtr","x");
+
+  B.StoreMeshCoordinates(spo.GetMeshCoordinates());
+  B.WriteToVTRFile("B.vtr","b");
+
 
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");
@@ -167,6 +192,23 @@ BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
   [[maybe_unused]] double*** bb = B.GetDataPointer();
   
 
+  for(int k=k0; k<kmax; k++)
+    for(int j=j0; j<jmax; j++)
+      for(int i=i0; i<imax; i++) {
+        row_entries.push_back(RowEntries(1));
+        RowEntries &entries(row_entries.back());
+        entries.row.i = i;
+        entries.row.j = j;
+        entries.row.k = k;
+        entries.cols.push_back(MatStencil());
+        entries.cols.back().i = i;
+        entries.cols.back().j = j;
+        entries.cols.back().k = k;
+        entries.vals.push_back(2.0);
+
+        xx[k][j][i] = 0.0; //initial guess
+        bb[k][j][i] = 2.0*coords[k][j][i].norm();
+      }
 
   X.RestoreDataPointerAndInsert();
   B.RestoreDataPointerAndInsert();

@@ -3556,8 +3556,15 @@ void SpecialToolsData::setup(const char *name, ClassAssigner *father)
 
 PETScKSPOptionsData::PETScKSPOptionsData()
 {
+  // solver options
   ksp = KSP_DEFAULT;
   pc  = PC_DEFAULT;
+
+  // tolerances
+  rtol   = -1.0; //a negative number means PETSc default will be used
+  abstol = -1.0;
+  dtol   = -1.0;
+  maxits = -1;
 }
 
 //------------------------------------------------------------------------------
@@ -3565,7 +3572,7 @@ PETScKSPOptionsData::PETScKSPOptionsData()
 void PETScKSPOptionsData::setup(const char *name, ClassAssigner *father)
 {
 
-  ClassAssigner *ca = new ClassAssigner(name, 2, father);
+  ClassAssigner *ca = new ClassAssigner(name, 6, father);
 
   new ClassToken<PETScKSPOptionsData> (ca, "Type", this,
      reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::ksp), 3,
@@ -3575,6 +3582,18 @@ void PETScKSPOptionsData::setup(const char *name, ClassAssigner *father)
      reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::ksp), 7,
      "Default", 0, "None", 1, "Jacobi", 2, "IncompleteLU", 3, "IncompleteCholesky", 4,
      "MultiGridExortic", 5, "MultiGrid", 6);
+
+  new ClassDouble<PETScKSPOptionsData>(ca, "RelativeErrorTolerance", this,
+                                       &PETScKSPOptionsData::rtol);
+
+  new ClassDouble<PETScKSPOptionsData>(ca, "AbsoluteErrorTolerance", this,
+                                       &PETScKSPOptionsData::abstol);
+
+  new ClassDouble<PETScKSPOptionsData>(ca, "DivergenceTolerance", this,
+                                       &PETScKSPOptionsData::dtol);
+
+  new ClassInt<PETScKSPOptionsData>(ca, "MaxIts", this, &PETScKSPOptionsData::maxits);
+
 }
 
 //------------------------------------------------------------------------------

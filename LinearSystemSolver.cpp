@@ -17,8 +17,10 @@ LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptions
   DMCreateMatrix(dm, &A);
 
   KSPCreate(comm, &ksp);
-  KSPSetDM(ksp, dm);
+  //KSPSetDM(ksp, dm);
   KSPSetInitialGuessNonzero(ksp, PETSC_TRUE); //!< initial guess is passed to KSPSolve
+
+  SetTolerances(ksp_input);
 
   // -------------------------------------------------------
   // Get info about the domain decomposition
@@ -91,6 +93,23 @@ LinearSystemSolver::Destroy()
   DMDestroy(&dm);
   KSPDestroy(&ksp);
   MatDestroy(&A);
+}
+
+//-----------------------------------------------------
+
+void
+LinearSystemSolver::SetTolerances(PETScKSPOptionsData &ksp_input) 
+{
+  double relative_error = ksp_input.rtol;
+  double absolute_error = ksp_input.abstol;
+  double divergence_tol = ksp_input.dtol;
+  int    max_iterations = ksp_input.maxits;
+
+  KSPSetTolerances(ksp,
+                   relative_error>0 ? relative_error : PETSC_DEFAULT,
+                   absolute_error>0 ? absolute_error : PETSC_DEFAULT,
+                   divergence_tol>0 ? divergence_tol : PETSC_DEFAULT,
+                   max_iterations>0 ? max_iterations : PETSC_DEFAULT);
 }
 
 //-----------------------------------------------------

@@ -25,6 +25,12 @@ struct RowEntries {
   MatStencil row; //!< row number, defined by i,j,k,c
   std::vector<MatStencil> cols; //!< col numbers
   std::vector<double> vals; //entries (one per col)
+
+  RowEntries() {}
+  RowEntries(int nEntries) {
+    cols.reserve(nEntries);
+    vals.reserve(nEntries);
+  }
 };
 
 
@@ -63,6 +69,8 @@ public:
   int Solve(SpaceVariable3D &b, SpaceVariable3D &x); //!< x: both input (initial guess) & output (solution)
 
 private:
+
+  void SetTolerances(PETScKSPOptionsData &ksp_input);
 
 };
 
