@@ -33,6 +33,9 @@ clock_t start_time;
 // Example cases
 void BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
                           vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X);
+void BuildLinearSystemEx2(GlobalMeshInfo &global_mesh, SpaceVariable3D &coordinates,
+                          SpaceVariable3D &delta_xyz,
+                          vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X);
 //-------------------------------------------------
 
 
@@ -104,7 +107,15 @@ int main(int argc, char* argv[])
 
   mpi_barrier();
   clock_t timing1 = clock(); //for timing purpose only
+
+#if LINEAR_SOLVER_TEST == 1
   BuildLinearSystemEx1(spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+#elif LINEAR_SOLVER_TEST == 2
+  BuildLinearSystemEx2(global_mesh, spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+#else //by default, run test case 1
+  BuildLinearSystemEx1(spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+#endif
+
   mpi_barrier();
   print("Computation time for building A, B, X outside PETSc: %f sec.\n",
         ((double)(clock()-timing1))/CLOCKS_PER_SEC);
@@ -174,8 +185,7 @@ int main(int argc, char* argv[])
 }
 
 //--------------------------------------------------------------
-
-
+// A trivial diagonoal matrix A
 void
 BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
                      std::vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X)
@@ -185,11 +195,10 @@ BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
   coordinates.GetCornerIndices(&i0, &j0, &k0, &imax, &jmax, &kmax);
   coordinates.GetGhostedCornerIndices(&ii0, &jj0, &kk0, &iimax, &jjmax, &kkmax);
 
-  [[maybe_unused]] Vec3D*** coords = (Vec3D***)coordinates.GetDataPointer();
-  [[maybe_unused]] Vec3D*** dxyz   = (Vec3D***)delta_xyz.GetDataPointer();
+  Vec3D*** coords = (Vec3D***)coordinates.GetDataPointer();
   
-  [[maybe_unused]] double*** xx = X.GetDataPointer();
-  [[maybe_unused]] double*** bb = B.GetDataPointer();
+  double*** xx = X.GetDataPointer();
+  double*** bb = B.GetDataPointer();
   
 
   for(int k=k0; k<kmax; k++)
@@ -214,10 +223,222 @@ BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
   B.RestoreDataPointerAndInsert();
 
   coordinates.RestoreDataPointerToLocalVector();
+
+}
+
+//--------------------------------------------------------------
+// Poisson's equation
+void 
+        FillEntriesInDirection(0/*x-dir*/, Nx, i, dxb, dxf, dxc, poisson, global_mesh,
+                               entries, bb[k][j][i], diag)
+I AM HERE
+void
+BuildLinearSystemEx2(GlobalMeshInfo &global_mesh, SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
+                     std::vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X)
+{
+  int i0, j0, k0, ii0, jj0, kk0;
+  int imax, jmax, kmax, iimax, jjmax, kkmax;
+  int NX, NY, NZ;
+  X.GetCornerIndices(&i0, &j0, &k0, &imax, &jmax, &kmax);
+  X.GetGhostedCornerIndices(&ii0, &jj0, &kk0, &iimax, &jjmax, &kkmax);
+  X.GetGlobalSize(&NX, &NY, &NZ);
+
+  double*** xx = X.GetDataPointer();
+  double*** bb = B.GetDataPointer();
+  
+  double dxb, dxf, dxc; //(x_i - x_(i-1)), (x_(i+1)-x_i), (x_(i+1)-x_(i-1))
+  double dyb, dyf, dyc;
+  double dzb, dzf, dzc;
+
+  for(int k=k0; k<kmax; k++) {
+    dzb = global_mesh.GetZ(k) - global_mesh.GetZ(k-1);
+    dzf = global_mesh.GetZ(k+1) - global_mesh.GetZ(k);
+    dzc = dzb + dzf;
+
+    for(int j=j0; j<jmax; j++) {
+      dyb = global_mesh.GetY(j) - global_mesh.GetY(j-1);
+      dyf = global_mesh.GetY(j+1) - global_mesh.GetY(j);
+      dyc = dyb + dyf;
+
+      for(int i=i0; i<imax; i++) {
+        dxb = global_mesh.GetX(i) - global_mesh.GetX(i-1);
+        dxf = global_mesh.GetX(i+1) - global_mesh.GetX(i);
+        dxc = dxb + dxf;
+        
+        // -----------------------------------------------------------
+        // Setup this row
+        // -----------------------------------------------------------
+        row_entries.push_back(RowEntries(7)); //at most 7 non-zero entries on each row
+        RowEntries &entries(row_entries.back());
+        entries.row.i = i;
+        entries.row.j = j;
+        entries.row.k = k;
+
+        bb[k][j][i] = 0.0; //no source term in this example
+        double diag = 0.0; //collect the diagonal component from dd/ddx, dd/ddy, and dd/ddz
+
+        // -----------------------------------------------------------
+        // Calculate & register the non-zero entries on this row.
+        // -----------------------------------------------------------
+        FillEntriesInDirection(0/*x-dir*/, Nx, i, dxb, dxf, dxc, poisson, global_mesh,
+                               entries, bb[k][j][i], diag)
+        FillEntriesInDirection(1/*y-dir*/, Ny, j, dyb, dyf, dyc, poisson, global_mesh,
+                               entries, bb[k][j][i], diag)
+        FillEntriesInDirection(2/*z-dir*/, Nz, k, dzb, dzf, dzc, poisson, global_mesh,
+                               entries, bb[k][j][i], diag)
+
+        entries.cols.push_back(MatStencil());
+        entries.cols.back().i = i;
+        entries.cols.back().j = j;
+        entries.cols.back().k = k;
+     
+        entries.vals.push_back(diag);
+
+        xx[k][j][i] = bb[k][j][i]/diag; //initial guess
+      }
+    }
+  }
+
+  X.RestoreDataPointerAndInsert();
+  B.RestoreDataPointerAndInsert();
+}
+
+        // dd/ddx --> (i-1,j,k), (i,j,k), and (i+1,j,k)
+        if(i-1<0) {
+          if(i+1>=Nx) goto END_X; //no dd/ddx
+
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i+1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+
+          double xmin_xi = global_mesh.GetXmin() - global_mesh.GetX(i);
+          double xmin_xp = global_mesh.GetXmin() - global_mesh.GetX(i+1);
+          if(poisson.bc_x0 == PoissonEquationData::DIRICHLET) {
+            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi*xmin_xp);
+            diag        += 2.0/(xmin_xi*dxf);
+            entries.vals.push_back(-2.0/(xmin_xp*dxf));
+          }
+          else {// Neumann
+            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi + xmin_xp); 
+            double val   = 2.0/((xmin_xi + xmin_xp)*dxf);
+            diag        += val;
+            entries.vals.push_back(-val);
+          }
+        }
+        else if(i+1>=Nx) {
+          if(i-1<0) goto END_X; //no dd/ddx
+
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i-1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+
+          double xmax_xi = global_mesh.GetXmax() - global_mesh.GetX(i);
+          double xmax_xm = global_mesh.GetXmax() - global_mesh.GetX(i-1);
+          if(poisson.bc_xmax == PoissonEquationData::DIRICHLET) {
+            bb[k][j][i] += 2.0*poisson.bc_xmax_val/(xmax_xi*xmax_xm);
+            diag        -= 2.0/(xmax_xi*dxb);
+            entries.vals.push_back(2.0/(xmax_xm*dxb));
+          }
+          else {// Neumann
+            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmax_xi + xmax_xm); 
+            double val   = 2.0/((xmax_xi + xmax_xm)*dxm);
+            diag        -= val;
+            entries.vals.push_back(val);
+          }
+        }
+        else {
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i-1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+          entries.vals.push_back(2.0/(dxb*dxc));
+
+          diag -= 2.0/(dxb*dxf);
+
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i+1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+          entries.vals.push_back(2.0/(dxf*dxc));
+        }
+END_X:
+
+        if(j-1<0) {
+          if(j+1>=Ny) goto END_Y; //no dd/ddx
+
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i+1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+
+          double xmin_xi = global_mesh.GetXmin() - global_mesh.GetX(i);
+          double xmin_xp = global_mesh.GetXmin() - global_mesh.GetX(i+1);
+          if(poisson.bc_x0 == PoissonEquationData::DIRICHLET) {
+            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi*xmin_xp);
+            diag        += 2.0/(xmin_xi*dxf);
+            entries.vals.push_back(-2.0/(xmin_xp*dxf));
+          }
+          else {// Neumann
+            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi + xmin_xp); 
+            double val   = 2.0/((xmin_xi + xmin_xp)*dxf);
+            diag        += val;
+            entries.vals.push_back(-val);
+          }
+        }
+        else if(i+1>=Nx) {
+          if(i-1<0) goto END_X; //no dd/ddx
+
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i-1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+
+          double xmax_xi = global_mesh.GetXmax() - global_mesh.GetX(i);
+          double xmax_xm = global_mesh.GetXmax() - global_mesh.GetX(i-1);
+          if(poisson.bc_xmax == PoissonEquationData::DIRICHLET) {
+            bb[k][j][i] += 2.0*poisson.bc_xmax_val/(xmax_xi*xmax_xm);
+            diag        -= 2.0/(xmax_xi*dxb);
+            entries.vals.push_back(2.0/(xmax_xm*dxb));
+          }
+          else {// Neumann
+            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmax_xi + xmax_xm); 
+            double val   = 2.0/((xmax_xi + xmax_xm)*dxm);
+            diag        -= val;
+            entries.vals.push_back(val);
+          }
+        }
+        else {
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i-1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+          entries.vals.push_back(2.0/(dxb*dxc));
+
+          diag -= 2.0/(dxb*dxf);
+
+          entries.cols.push_back(MatStencil());
+          entries.cols.back().i = i+1;
+          entries.cols.back().j = j;
+          entries.cols.back().k = k;
+          entries.vals.push_back(2.0/(dxf*dxc));
+        }
+END_X:
+
+
+
+      }
+
+  X.RestoreDataPointerAndInsert();
+  B.RestoreDataPointerAndInsert();
+
+  coordinates.RestoreDataPointerToLocalVector();
   delta_xyz.RestoreDataPointerToLocalVector();
 
   [[maybe_unused]] int n = row_entries.size();
 }
+
 
 
 //--------------------------------------------------------------

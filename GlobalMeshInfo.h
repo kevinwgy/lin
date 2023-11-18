@@ -48,6 +48,8 @@ public:
   std::vector<double> x_glob, y_glob, z_glob;
   std::vector<double> dx_glob, dy_glob, dz_glob;
 
+  Vec3D xyz_min[3], xyz_max[3]; //!< boundary of the physical domain (up to cell boundaries)
+
   std::vector<Vec3D> subD_xyz_min, subD_xyz_max; //!< actual boundaries of subs, up to cell boundaries
   std::vector<Int3> subD_ijk_min, subD_ijk_max; //!< Note: "max" is max index + 1 
 
@@ -63,6 +65,13 @@ public:
   void GetSubdomainInfo(MPI_Comm& comm, DataManagers3D& dms);
 
   //! Get specific info 
+  double GetXMin() {return xyz_min[0];}
+  double GetYMin() {return xyz_min[1];}
+  double GetZMin() {return xyz_min[2];}
+  double GetXMax() {return xyz_max[0];}
+  double GetYMax() {return xyz_max[1];}
+  double GetZMax() {return xyz_max[2];}
+
   double GetX(int i);
   double GetY(int j);
   double GetZ(int k);
