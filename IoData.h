@@ -1646,6 +1646,24 @@ struct PETScKSPOptionsData {
 
 //------------------------------------------------------------------------------
 
+struct PoissonEquationData {
+
+  enum BoundaryType {DIRICHLET = 0, NEUMANN = 1} bc_x0, bc_y0, bc_z0, bc_xmax, bc_ymax, bc_zmax;
+  double bc_x0_val;
+  double bc_y0_val;
+  double bc_z0_val;
+  double bc_xmax_val;
+  double bc_ymax_val;
+  double bc_zmax_val;
+
+  PoissonEquationData();
+  ~PoissonEquationData() {}
+
+  void setup(const char *, ClassAssigner * = 0);
+};
+
+//------------------------------------------------------------------------------
+
 class IoData {
 
   char *cmdFileName;
@@ -1684,6 +1702,8 @@ public:
   TerminalVisualizationData terminal_visualization;
 
   PETScKSPOptionsData petsc_ksp_options;
+
+  PoissonEquationData poisson;
 
 public:
 

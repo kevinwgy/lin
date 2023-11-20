@@ -31,10 +31,9 @@ clock_t start_time;
 
 //-------------------------------------------------
 // Example cases
-void BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
+void BuildLinearSystemEx1(SpaceVariable3D &coordinates,
                           vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X);
-void BuildLinearSystemEx2(GlobalMeshInfo &global_mesh, SpaceVariable3D &coordinates,
-                          SpaceVariable3D &delta_xyz,
+void BuildLinearSystemEx2(PoissonEquationData &poisson, GlobalMeshInfo &global_mesh,
                           vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X);
 //-------------------------------------------------
 
@@ -109,11 +108,11 @@ int main(int argc, char* argv[])
   clock_t timing1 = clock(); //for timing purpose only
 
 #if LINEAR_SOLVER_TEST == 1
-  BuildLinearSystemEx1(spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+  BuildLinearSystemEx1(spo.GetMeshCoordinates(), row_entries, B, X);
 #elif LINEAR_SOLVER_TEST == 2
-  BuildLinearSystemEx2(global_mesh, spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+  BuildLinearSystemEx2(iod.poisson, global_mesh, row_entries, B, X);
 #else //by default, run test case 1
-  BuildLinearSystemEx1(spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), row_entries, B, X);
+  BuildLinearSystemEx1(spo.GetMeshCoordinates(), row_entries, B, X);
 #endif
 
   mpi_barrier();
@@ -187,7 +186,7 @@ int main(int argc, char* argv[])
 //--------------------------------------------------------------
 // A trivial diagonoal matrix A
 void
-BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
+BuildLinearSystemEx1(SpaceVariable3D &coordinates, 
                      std::vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X)
 {
   int i0, j0, k0, ii0, jj0, kk0;
@@ -227,20 +226,126 @@ BuildLinearSystemEx1(SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
 }
 
 //--------------------------------------------------------------
-// Poisson's equation
+// Poisson's equation (an internal function filling one axis of the scheme)
 void 
-        FillEntriesInDirection(0/*x-dir*/, Nx, i, dxb, dxf, dxc, poisson, global_mesh,
-                               entries, bb[k][j][i], diag)
-I AM HERE
-void
-BuildLinearSystemEx2(GlobalMeshInfo &global_mesh, SpaceVariable3D &coordinates, SpaceVariable3D &delta_xyz,
-                     std::vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X)
+FillEntriesInOneAxisEx2(int dir/*0,1,2 for x,y,z*/, int N, Int3 &ijk, double db, double df, double dc,
+                        PoissonEquationData &poisson, GlobalMeshInfo &global_mesh,
+                        RowEntries &entries, double &rhs, double &diag)
 {
-  int i0, j0, k0, ii0, jj0, kk0;
-  int imax, jmax, kmax, iimax, jjmax, kkmax;
+  assert(dir>=0 && dir<=2);
+  int ind = ijk[dir];
+
+  if(ind-1<0) {
+    if(ind+1>=N) 
+      return; //no derivative in this axis
+
+    entries.cols.push_back(MatStencil());
+    entries.cols.back().i = dir==0 ? ijk[0]+1 : ijk[0];
+    entries.cols.back().j = dir==1 ? ijk[1]+1 : ijk[1];
+    entries.cols.back().k = dir==2 ? ijk[2]+1 : ijk[2];
+
+    // variables that depend on "dir"
+    double dmin_i, dmin_p, bcval;
+    PoissonEquationData::BoundaryType bctype;
+    if(dir==0) {
+      dmin_i = global_mesh.GetXmin() - global_mesh.GetX(ind);
+      dmin_p = global_mesh.GetXmin() - global_mesh.GetX(ind+1);
+      bctype = poisson.bc_x0;
+      bcval  = poisson.bc_x0_val;
+    } else if(dir==1) {
+      dmin_i = global_mesh.GetYmin() - global_mesh.GetY(ind);
+      dmin_p = global_mesh.GetYmin() - global_mesh.GetY(ind+1);
+      bctype = poisson.bc_y0;
+      bcval  = poisson.bc_y0_val;
+    } else {//dir==2
+      dmin_i = global_mesh.GetZmin() - global_mesh.GetZ(ind);
+      dmin_p = global_mesh.GetZmin() - global_mesh.GetZ(ind+1);
+      bctype = poisson.bc_z0;
+      bcval  = poisson.bc_z0_val;
+    }
+
+    // fill entries
+    if(bctype == PoissonEquationData::DIRICHLET) {
+      rhs  += 2.0*bcval/(dmin_i*dmin_p);
+      diag += 2.0/(dmin_i*df);
+      entries.vals.push_back(-2.0/(dmin_p*df));
+    }
+    else {// Neumann
+      rhs        += 2.0*bcval/(dmin_i + dmin_p); 
+      double val = 2.0/((dmin_i + dmin_p)*df);
+      diag       += val;
+      entries.vals.push_back(-val);
+    }
+  }
+  else if(ind+1>=N) {
+    if(ind-1<0) 
+      return;
+
+    entries.cols.push_back(MatStencil());
+    entries.cols.back().i = dir==0 ? ijk[0]-1 : ijk[0];
+    entries.cols.back().j = dir==1 ? ijk[1]-1 : ijk[1];
+    entries.cols.back().k = dir==2 ? ijk[2]-1 : ijk[2];
+
+    // variables that depend on "dir"
+    double dmax_i, dmax_m, bcval;
+    PoissonEquationData::BoundaryType bctype;
+    if(dir==0) {
+      dmax_i = global_mesh.GetXmax() - global_mesh.GetX(ind);
+      dmax_m = global_mesh.GetXmax() - global_mesh.GetX(ind-1);
+      bctype = poisson.bc_xmax;
+      bcval  = poisson.bc_xmax_val;
+    } else if(dir==1) {
+      dmax_i = global_mesh.GetYmax() - global_mesh.GetY(ind);
+      dmax_m = global_mesh.GetYmax() - global_mesh.GetY(ind-1);
+      bctype = poisson.bc_ymax;
+      bcval  = poisson.bc_ymax_val;
+    } else {//dir==2
+      dmax_i = global_mesh.GetZmax() - global_mesh.GetZ(ind);
+      dmax_m = global_mesh.GetZmax() - global_mesh.GetZ(ind-1);
+      bctype = poisson.bc_zmax;
+      bcval  = poisson.bc_zmax_val;
+    }
+
+    if(bctype == PoissonEquationData::DIRICHLET) {
+      rhs  += 2.0*bcval/(dmax_i*dmax_m);
+      diag -= 2.0/(dmax_i*db);
+      entries.vals.push_back(2.0/(dmax_m*db));
+    }
+    else {// Neumann
+      rhs        += 2.0*bcval/(dmax_i + dmax_m); 
+      double val = 2.0/((dmax_i + dmax_m)*db);
+      diag       -= val;
+      entries.vals.push_back(val);
+    }
+  }
+  else {
+
+    entries.cols.push_back(MatStencil());
+    entries.cols.back().i = dir==0 ? ijk[0]-1 : ijk[0];
+    entries.cols.back().j = dir==1 ? ijk[1]-1 : ijk[1];
+    entries.cols.back().k = dir==2 ? ijk[2]-1 : ijk[2];
+    entries.vals.push_back(2.0/(db*dc));
+
+    diag -= 2.0/(db*df);
+
+    entries.cols.push_back(MatStencil());
+    entries.cols.back().i = dir==0 ? ijk[0]+1 : ijk[0];
+    entries.cols.back().j = dir==1 ? ijk[1]+1 : ijk[1];
+    entries.cols.back().k = dir==2 ? ijk[2]+1 : ijk[2];
+    entries.vals.push_back(2.0/(df*dc));
+
+  }
+}
+
+//--------------------------------------------------------------
+// Poisson's equation
+void
+BuildLinearSystemEx2(PoissonEquationData &poisson, GlobalMeshInfo &global_mesh,
+                     vector<RowEntries> &row_entries, SpaceVariable3D &B, SpaceVariable3D &X)
+{
+  int i0, j0, k0, imax, jmax, kmax;
   int NX, NY, NZ;
   X.GetCornerIndices(&i0, &j0, &k0, &imax, &jmax, &kmax);
-  X.GetGhostedCornerIndices(&ii0, &jj0, &kk0, &iimax, &jjmax, &kkmax);
   X.GetGlobalSize(&NX, &NY, &NZ);
 
   double*** xx = X.GetDataPointer();
@@ -280,20 +385,22 @@ BuildLinearSystemEx2(GlobalMeshInfo &global_mesh, SpaceVariable3D &coordinates, 
         // -----------------------------------------------------------
         // Calculate & register the non-zero entries on this row.
         // -----------------------------------------------------------
-        FillEntriesInDirection(0/*x-dir*/, Nx, i, dxb, dxf, dxc, poisson, global_mesh,
-                               entries, bb[k][j][i], diag)
-        FillEntriesInDirection(1/*y-dir*/, Ny, j, dyb, dyf, dyc, poisson, global_mesh,
-                               entries, bb[k][j][i], diag)
-        FillEntriesInDirection(2/*z-dir*/, Nz, k, dzb, dzf, dzc, poisson, global_mesh,
-                               entries, bb[k][j][i], diag)
+        Int3 ijk(i,j,k); 
+        FillEntriesInOneAxisEx2(0/*x-dir*/, NX, ijk, dxb, dxf, dxc, poisson, global_mesh,
+                                entries, bb[k][j][i], diag);
+        FillEntriesInOneAxisEx2(1/*y-dir*/, NY, ijk, dyb, dyf, dyc, poisson, global_mesh,
+                                entries, bb[k][j][i], diag);
+        FillEntriesInOneAxisEx2(2/*z-dir*/, NZ, ijk, dzb, dzf, dzc, poisson, global_mesh,
+                                entries, bb[k][j][i], diag);
 
+        // add diagonal
         entries.cols.push_back(MatStencil());
         entries.cols.back().i = i;
         entries.cols.back().j = j;
         entries.cols.back().k = k;
-     
         entries.vals.push_back(diag);
 
+        assert(diag!=0.0);
         xx[k][j][i] = bb[k][j][i]/diag; //initial guess
       }
     }
@@ -302,143 +409,5 @@ BuildLinearSystemEx2(GlobalMeshInfo &global_mesh, SpaceVariable3D &coordinates, 
   X.RestoreDataPointerAndInsert();
   B.RestoreDataPointerAndInsert();
 }
-
-        // dd/ddx --> (i-1,j,k), (i,j,k), and (i+1,j,k)
-        if(i-1<0) {
-          if(i+1>=Nx) goto END_X; //no dd/ddx
-
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i+1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-
-          double xmin_xi = global_mesh.GetXmin() - global_mesh.GetX(i);
-          double xmin_xp = global_mesh.GetXmin() - global_mesh.GetX(i+1);
-          if(poisson.bc_x0 == PoissonEquationData::DIRICHLET) {
-            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi*xmin_xp);
-            diag        += 2.0/(xmin_xi*dxf);
-            entries.vals.push_back(-2.0/(xmin_xp*dxf));
-          }
-          else {// Neumann
-            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi + xmin_xp); 
-            double val   = 2.0/((xmin_xi + xmin_xp)*dxf);
-            diag        += val;
-            entries.vals.push_back(-val);
-          }
-        }
-        else if(i+1>=Nx) {
-          if(i-1<0) goto END_X; //no dd/ddx
-
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i-1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-
-          double xmax_xi = global_mesh.GetXmax() - global_mesh.GetX(i);
-          double xmax_xm = global_mesh.GetXmax() - global_mesh.GetX(i-1);
-          if(poisson.bc_xmax == PoissonEquationData::DIRICHLET) {
-            bb[k][j][i] += 2.0*poisson.bc_xmax_val/(xmax_xi*xmax_xm);
-            diag        -= 2.0/(xmax_xi*dxb);
-            entries.vals.push_back(2.0/(xmax_xm*dxb));
-          }
-          else {// Neumann
-            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmax_xi + xmax_xm); 
-            double val   = 2.0/((xmax_xi + xmax_xm)*dxm);
-            diag        -= val;
-            entries.vals.push_back(val);
-          }
-        }
-        else {
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i-1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-          entries.vals.push_back(2.0/(dxb*dxc));
-
-          diag -= 2.0/(dxb*dxf);
-
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i+1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-          entries.vals.push_back(2.0/(dxf*dxc));
-        }
-END_X:
-
-        if(j-1<0) {
-          if(j+1>=Ny) goto END_Y; //no dd/ddx
-
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i+1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-
-          double xmin_xi = global_mesh.GetXmin() - global_mesh.GetX(i);
-          double xmin_xp = global_mesh.GetXmin() - global_mesh.GetX(i+1);
-          if(poisson.bc_x0 == PoissonEquationData::DIRICHLET) {
-            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi*xmin_xp);
-            diag        += 2.0/(xmin_xi*dxf);
-            entries.vals.push_back(-2.0/(xmin_xp*dxf));
-          }
-          else {// Neumann
-            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmin_xi + xmin_xp); 
-            double val   = 2.0/((xmin_xi + xmin_xp)*dxf);
-            diag        += val;
-            entries.vals.push_back(-val);
-          }
-        }
-        else if(i+1>=Nx) {
-          if(i-1<0) goto END_X; //no dd/ddx
-
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i-1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-
-          double xmax_xi = global_mesh.GetXmax() - global_mesh.GetX(i);
-          double xmax_xm = global_mesh.GetXmax() - global_mesh.GetX(i-1);
-          if(poisson.bc_xmax == PoissonEquationData::DIRICHLET) {
-            bb[k][j][i] += 2.0*poisson.bc_xmax_val/(xmax_xi*xmax_xm);
-            diag        -= 2.0/(xmax_xi*dxb);
-            entries.vals.push_back(2.0/(xmax_xm*dxb));
-          }
-          else {// Neumann
-            bb[k][j][i] += 2.0*poisson.bc_x0_val/(xmax_xi + xmax_xm); 
-            double val   = 2.0/((xmax_xi + xmax_xm)*dxm);
-            diag        -= val;
-            entries.vals.push_back(val);
-          }
-        }
-        else {
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i-1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-          entries.vals.push_back(2.0/(dxb*dxc));
-
-          diag -= 2.0/(dxb*dxf);
-
-          entries.cols.push_back(MatStencil());
-          entries.cols.back().i = i+1;
-          entries.cols.back().j = j;
-          entries.cols.back().k = k;
-          entries.vals.push_back(2.0/(dxf*dxc));
-        }
-END_X:
-
-
-
-      }
-
-  X.RestoreDataPointerAndInsert();
-  B.RestoreDataPointerAndInsert();
-
-  coordinates.RestoreDataPointerToLocalVector();
-  delta_xyz.RestoreDataPointerToLocalVector();
-
-  [[maybe_unused]] int n = row_entries.size();
-}
-
-
 
 //--------------------------------------------------------------
