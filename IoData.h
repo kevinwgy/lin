@@ -1638,6 +1638,8 @@ struct PETScKSPOptionsData {
   double dtol; //!< divergence tolerance (in terms of residual norm)
   int maxits; //!< max. iterations
 
+  const char *options_file; //!< additional options can be specified through a file
+
   PETScKSPOptionsData();
   ~PETScKSPOptionsData() {}
 

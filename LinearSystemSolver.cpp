@@ -77,6 +77,9 @@ LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptions
     }
   }
 
+  if(strcmp(ksp_input.options_file, ""))
+    PetscOptionsInsert(NULL, NULL, NULL, ksp_input.options_file);
+
   KSPSetFromOptions(ksp); //overrides any options specified above
 }
 
@@ -110,6 +113,14 @@ LinearSystemSolver::SetTolerances(PETScKSPOptionsData &ksp_input)
                    absolute_error>0 ? absolute_error : PETSC_DEFAULT,
                    divergence_tol>0 ? divergence_tol : PETSC_DEFAULT,
                    max_iterations>0 ? max_iterations : PETSC_DEFAULT);
+}
+
+//-----------------------------------------------------
+
+void
+LinearSystemSolver::GetTolerances(double *rtol, double *abstol, double *dtol, int *maxits)
+{
+  KSPGetTolerances(ksp, rtol, abstol, dtol, maxits);
 }
 
 //-----------------------------------------------------

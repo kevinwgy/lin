@@ -68,6 +68,8 @@ public:
 
   int Solve(SpaceVariable3D &b, SpaceVariable3D &x); //!< x: both input (initial guess) & output (solution)
 
+  void GetTolerances(double *rtol, double *abstol, double *dtol, int *maxits); //!< set NULL to params not needed
+
 private:
 
   void SetTolerances(PETScKSPOptionsData &ksp_input);

@@ -3565,6 +3565,7 @@ PETScKSPOptionsData::PETScKSPOptionsData()
   abstol = -1.0;
   dtol   = -1.0;
   maxits = -1;
+  options_file = "";
 }
 
 //------------------------------------------------------------------------------
@@ -3572,14 +3573,14 @@ PETScKSPOptionsData::PETScKSPOptionsData()
 void PETScKSPOptionsData::setup(const char *name, ClassAssigner *father)
 {
 
-  ClassAssigner *ca = new ClassAssigner(name, 6, father);
+  ClassAssigner *ca = new ClassAssigner(name, 7, father);
 
   new ClassToken<PETScKSPOptionsData> (ca, "Type", this,
      reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::ksp), 3,
      "Default", 0, "GMRes", 1, "FlexibleGMRes", 2);
 
   new ClassToken<PETScKSPOptionsData> (ca, "Preconditioner", this,
-     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::ksp), 7,
+     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::pc), 7,
      "Default", 0, "None", 1, "Jacobi", 2, "IncompleteLU", 3, "IncompleteCholesky", 4,
      "MultiGridExortic", 5, "MultiGrid", 6);
 
@@ -3593,6 +3594,8 @@ void PETScKSPOptionsData::setup(const char *name, ClassAssigner *father)
                                        &PETScKSPOptionsData::dtol);
 
   new ClassInt<PETScKSPOptionsData>(ca, "MaxIts", this, &PETScKSPOptionsData::maxits);
+
+  new ClassStr<PETScKSPOptionsData>(ca, "PETScOptionsFile", this, &PETScKSPOptionsData::options_file);
 
 }
 
@@ -3779,6 +3782,8 @@ void IoData::setupCmdFileVariables()
   terminal_visualization.setup("TerminalVisualization");
 
   petsc_ksp_options.setup("LinearSystemSolver");
+
+  poisson.setup("PoissonEquation");
 }
 
 //------------------------------------------------------------------------------

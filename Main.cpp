@@ -55,6 +55,8 @@ int main(int argc, char* argv[])
   verbose = iod.output.verbose;
   iod.finalize();
 
+  print("Max Int = %d.\n", INT_MAX);
+  print("Max long int = %lld.\n", LONG_MAX);
 
   //! Calculate mesh coordinates
   vector<double> xcoords, dx, ycoords, dy, zcoords, dz;
@@ -99,6 +101,14 @@ int main(int argc, char* argv[])
 
   
   LinearSystemSolver linsys(comm, dms.ghosted1_1dof, iod.petsc_ksp_options);
+  double rtol, abstol, dtol;
+  int maxits;
+  linsys.GetTolerances(&rtol, &abstol, &dtol, &maxits);
+  print("PETSc parameters...\n");
+  print("- rtol: %e.\n", rtol);
+  print("- abstol: %e.\n", abstol);
+  print("- dtol: %e.\n", dtol);
+  print("- maxits: %d.\n", maxits);
 
   vector<RowEntries> row_entries;
   SpaceVariable3D X(comm, &(dms.ghosted1_1dof));
@@ -119,7 +129,7 @@ int main(int argc, char* argv[])
   print("Computation time for building A, B, X outside PETSc: %f sec.\n",
         ((double)(clock()-timing1))/CLOCKS_PER_SEC);
 
-/* 
+/*
   int mpi_rank;
   MPI_Comm_rank(comm, &mpi_rank);
   for(auto&& entries : row_entries) 
@@ -127,7 +137,9 @@ int main(int argc, char* argv[])
       fprintf(stdout,"[%d] Row (%d,%d,%d): Col (%d,%d,%d), v = %e.\n",
               mpi_rank, entries.row.i, entries.row.j, entries.row.k,
               entries.cols[i].i, entries.cols[i].j, entries.cols[i].k, entries.vals[i]);
+  exit_mpi();
 */
+
 
   mpi_barrier(); timing1 = clock();
   linsys.SetLinearOperator(row_entries);
@@ -144,10 +156,10 @@ int main(int argc, char* argv[])
 
   X.StoreMeshCoordinates(spo.GetMeshCoordinates());
   X.WriteToVTRFile("X.vtr","x");
-
+/*
   B.StoreMeshCoordinates(spo.GetMeshCoordinates());
   B.WriteToVTRFile("B.vtr","b");
-
+*/
 
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");
@@ -266,12 +278,12 @@ FillEntriesInOneAxisEx2(int dir/*0,1,2 for x,y,z*/, int N, Int3 &ijk, double db,
 
     // fill entries
     if(bctype == PoissonEquationData::DIRICHLET) {
-      rhs  += 2.0*bcval/(dmin_i*dmin_p);
+      rhs  -= 2.0*bcval/(dmin_i*dmin_p); //on the right-hand-side
       diag += 2.0/(dmin_i*df);
       entries.vals.push_back(-2.0/(dmin_p*df));
     }
     else {// Neumann
-      rhs        += 2.0*bcval/(dmin_i + dmin_p); 
+      rhs        -= 2.0*bcval/(dmin_i + dmin_p); //on the right-hand-side
       double val = 2.0/((dmin_i + dmin_p)*df);
       diag       += val;
       entries.vals.push_back(-val);
@@ -307,19 +319,18 @@ FillEntriesInOneAxisEx2(int dir/*0,1,2 for x,y,z*/, int N, Int3 &ijk, double db,
     }
 
     if(bctype == PoissonEquationData::DIRICHLET) {
-      rhs  += 2.0*bcval/(dmax_i*dmax_m);
+      rhs  -= 2.0*bcval/(dmax_i*dmax_m); //on the right-hand-side
       diag -= 2.0/(dmax_i*db);
       entries.vals.push_back(2.0/(dmax_m*db));
     }
     else {// Neumann
-      rhs        += 2.0*bcval/(dmax_i + dmax_m); 
+      rhs       -= 2.0*bcval/(dmax_i + dmax_m); //on the right-hand-side
       double val = 2.0/((dmax_i + dmax_m)*db);
-      diag       -= val;
+      diag      -= val;
       entries.vals.push_back(val);
     }
   }
-  else {
-
+  else { //away from boundaries
     entries.cols.push_back(MatStencil());
     entries.cols.back().i = dir==0 ? ijk[0]-1 : ijk[0];
     entries.cols.back().j = dir==1 ? ijk[1]-1 : ijk[1];
@@ -333,7 +344,6 @@ FillEntriesInOneAxisEx2(int dir/*0,1,2 for x,y,z*/, int N, Int3 &ijk, double db,
     entries.cols.back().j = dir==1 ? ijk[1]+1 : ijk[1];
     entries.cols.back().k = dir==2 ? ijk[2]+1 : ijk[2];
     entries.vals.push_back(2.0/(df*dc));
-
   }
 }
 

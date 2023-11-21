@@ -46,6 +46,12 @@ add_custom_target(
    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/parser
 )
 
+#-----------------------------------------
+# Special tag(s). Don't turn on unless you know what they mean.
+#
+add_definitions(-DLINEAR_SOLVER_TEST=2)
+#-----------------------------------------
+
 # add the executable
 add_executable(m2c_linsolve
 Main.cpp
