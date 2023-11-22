@@ -9,36 +9,14 @@
 //-----------------------------------------------------
 
 LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptionsData &ksp_input)
-                  : comm(comm_)
+                  : LinearOperator(comm_, dm_)
 {
-  DMClone(dm_, &dm);
-  DMSetMatType(dm, MATAIJ);
-  DMSetMatrixPreallocateOnly(dm, PETSC_TRUE);
-  DMCreateMatrix(dm, &A);
 
   KSPCreate(comm, &ksp);
   //KSPSetDM(ksp, dm);
   KSPSetInitialGuessNonzero(ksp, PETSC_TRUE); //!< initial guess is passed to KSPSolve
 
   SetTolerances(ksp_input);
-
-  // -------------------------------------------------------
-  // Get info about the domain decomposition
-  DMDAGetInfo(dm, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &dof, NULL, NULL, NULL, NULL, NULL);
- 
-  int nx(0), ny(0), nz(0);
-  DMDAGetCorners(dm, &i0, &j0, &k0, &nx, &ny, &nz);
-  imax = i0 + nx;
-  jmax = j0 + ny;
-  kmax = k0 + nz;
-
-  int ghost_nx(0), ghost_ny(0), ghost_nz(0);
-  DMDAGetGhostCorners(dm, &ii0, &jj0, &kk0, &ghost_nx, &ghost_ny, &ghost_nz);
-  iimax = ii0 + ghost_nx;
-  jjmax = jj0 + ghost_ny;
-  kkmax = kk0 + ghost_nz;
-  // -------------------------------------------------------
-
 
   if(ksp_input.ksp == PETScKSPOptionsData::KSP_DEFAULT) {
     /* nothing to do */
@@ -93,9 +71,8 @@ LinearSystemSolver::~LinearSystemSolver()
 void
 LinearSystemSolver::Destroy()
 {
-  DMDestroy(&dm);
   KSPDestroy(&ksp);
-  MatDestroy(&A);
+  LinearOperator::Destroy();
 }
 
 //-----------------------------------------------------
@@ -128,14 +105,8 @@ LinearSystemSolver::GetTolerances(double *rtol, double *abstol, double *dtol, in
 void
 LinearSystemSolver::SetLinearOperator(vector<RowEntries>& row_entries)
 {
-  for(auto&& entries : row_entries)
-    MatSetValuesStencil(A, 1, &entries.row, entries.cols.size(), entries.cols.data(),
-                        entries.vals.data(), ADD_VALUES);
-
-  MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-
-  KSPSetOperators(ksp, A, A);  
+  LinearOperator::SetLinearOperator(row_entries); //build A
+  KSPSetOperators(ksp, A, A);
 }
 
 //-----------------------------------------------------

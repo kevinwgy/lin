@@ -63,6 +63,7 @@ GradientCalculatorCentral.cpp
 GradientCalculatorFD3.cpp
 Interpolator.cpp
 SpaceOperatorLite.cpp
+LinearOperator.cpp
 LinearSystemSolver.cpp
 Utils.cpp)
 
