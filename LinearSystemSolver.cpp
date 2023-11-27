@@ -5,6 +5,7 @@
 
 #include<LinearSystemSolver.h>
 #include<cassert>
+#include<iostream>
 
 //-----------------------------------------------------
 
@@ -13,7 +14,6 @@ LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptions
 {
 
   KSPCreate(comm, &ksp);
-  //KSPSetDM(ksp, dm);
   KSPSetInitialGuessNonzero(ksp, PETSC_TRUE); //!< initial guess is passed to KSPSolve
 
   SetTolerances(ksp_input);
@@ -33,22 +33,21 @@ LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptions
     /* nothing to do*/
   } 
   else {
-    PC* pc_ptr(NULL);
-    KSPGetPC(ksp, pc_ptr);
-    assert(pc_ptr);
+
+    PC pc;
+    KSPGetPC(ksp, &pc);
+    //PCFactorSetMatSolverType(pc, MATSOLVERMUMPS);
 
     if(ksp_input.pc == PETScKSPOptionsData::PC_NONE)
-      PCSetType(*pc_ptr, PCNONE);
+      PCSetType(pc, PCNONE);
     else if(ksp_input.pc == PETScKSPOptionsData::JACOBI)
-      PCSetType(*pc_ptr, PCJACOBI);
+      PCSetType(pc, PCJACOBI);
     else if(ksp_input.pc == PETScKSPOptionsData::INCOMPLETE_LU)
-      PCSetType(*pc_ptr, PCILU);
+      PCSetType(pc, PCILU);
     else if(ksp_input.pc == PETScKSPOptionsData::INCOMPLETE_CHOLESKY)
-      PCSetType(*pc_ptr, PCICC);
-    else if(ksp_input.pc == PETScKSPOptionsData::MG_2LEVEL_EXOTIC)
-      PCSetType(*pc_ptr, PCEXOTIC);
+      PCSetType(pc, PCICC);
     else if(ksp_input.pc == PETScKSPOptionsData::MG)
-      PCSetType(*pc_ptr, PCMG);
+      PCSetType(pc, PCMG);
     else { 
       print_error("*** Error: Detected unknown PETSc KSP preconditioner type.\n");
       exit_mpi();
@@ -59,6 +58,13 @@ LinearSystemSolver::LinearSystemSolver(MPI_Comm &comm_, DM &dm_, PETScKSPOptions
     PetscOptionsInsert(NULL, NULL, NULL, ksp_input.options_file);
 
   KSPSetFromOptions(ksp); //overrides any options specified above
+
+
+  PC pc;
+  KSPGetPC(ksp, &pc);
+  PCType pctype;
+  PCGetType(pc, &pctype);
+  std::cout << "Precondition: " << pctype << std::endl;
 }
 
 //-----------------------------------------------------

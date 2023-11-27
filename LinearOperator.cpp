@@ -44,8 +44,8 @@ LinearOperator::~LinearOperator()
 void
 LinearOperator::Destroy()
 {
-  DMDestroy(&dm);
   MatDestroy(&A);
+  DMDestroy(&dm);
 }
 
 //-----------------------------------------------------

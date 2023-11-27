@@ -90,9 +90,10 @@ int main(int argc, char* argv[])
     grad = new GradientCalculatorCentral(comm, dms, spo.GetMeshCoordinates(), spo.GetMeshDeltaXYZ(), *interp);
   
 
-  /*************************************
-   * Main Loop 
-   ************************************/
+  // *************************************
+  // Main Loop 
+  // *************************************
+
   double t = 0.0;
   print("\n");
   print("----------------------------\n");
@@ -129,16 +130,14 @@ int main(int argc, char* argv[])
   print("Computation time for building A, B, X outside PETSc: %f sec.\n",
         ((double)(clock()-timing1))/CLOCKS_PER_SEC);
 
-/*
-  int mpi_rank;
-  MPI_Comm_rank(comm, &mpi_rank);
-  for(auto&& entries : row_entries) 
-    for(unsigned i=0; i<entries.cols.size(); i++)
-      fprintf(stdout,"[%d] Row (%d,%d,%d): Col (%d,%d,%d), v = %e.\n",
-              mpi_rank, entries.row.i, entries.row.j, entries.row.k,
-              entries.cols[i].i, entries.cols[i].j, entries.cols[i].k, entries.vals[i]);
-  exit_mpi();
-*/
+//  int mpi_rank;
+//  MPI_Comm_rank(comm, &mpi_rank);
+//  for(auto&& entries : row_entries) 
+//    for(unsigned i=0; i<entries.cols.size(); i++)
+//      fprintf(stdout,"[%d] Row (%d,%d,%d): Col (%d,%d,%d), v = %e.\n",
+//              mpi_rank, entries.row.i, entries.row.j, entries.row.k,
+//              entries.cols[i].i, entries.cols[i].j, entries.cols[i].k, entries.vals[i]);
+//  exit_mpi();
 
 
   mpi_barrier(); timing1 = clock();
@@ -156,10 +155,8 @@ int main(int argc, char* argv[])
 
   X.StoreMeshCoordinates(spo.GetMeshCoordinates());
   X.WriteToVTRFile("X.vtr","x");
-/*
-  B.StoreMeshCoordinates(spo.GetMeshCoordinates());
-  B.WriteToVTRFile("B.vtr","b");
-*/
+//  B.StoreMeshCoordinates(spo.GetMeshCoordinates());
+//  B.WriteToVTRFile("B.vtr","b");
 
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");

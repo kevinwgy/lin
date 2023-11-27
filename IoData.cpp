@@ -3580,9 +3580,9 @@ void PETScKSPOptionsData::setup(const char *name, ClassAssigner *father)
      "Default", 0, "GMRes", 1, "FlexibleGMRes", 2);
 
   new ClassToken<PETScKSPOptionsData> (ca, "Preconditioner", this,
-     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::pc), 7,
+     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::pc), 6,
      "Default", 0, "None", 1, "Jacobi", 2, "IncompleteLU", 3, "IncompleteCholesky", 4,
-     "MultiGridExortic", 5, "MultiGrid", 6);
+     "MultiGrid", 5);
 
   new ClassDouble<PETScKSPOptionsData>(ca, "RelativeErrorTolerance", this,
                                        &PETScKSPOptionsData::rtol);

@@ -1631,7 +1631,7 @@ struct PETScKSPOptionsData {
 
   enum KSPType {KSP_DEFAULT = 0, GMRES = 1, FLEXIBLE_GMRES = 2} ksp;
   enum PCType {PC_DEFAULT = 0, PC_NONE = 1, JACOBI = 2, INCOMPLETE_LU = 3, INCOMPLETE_CHOLESKY = 4,
-               MG_2LEVEL_EXOTIC = 5, MG = 6} pc;
+               MG = 5} pc;
 
   double rtol; //!< relative error tolerance (in terms of residual norm)
   double abstol; //!< absolute error tolerance (in terms of residual norm)
