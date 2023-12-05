@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
   print("----------------------------\n");
 
   
-  LinearSystemSolver linsys(comm, dms.ghosted1_1dof, iod.petsc_ksp_options);
+  LinearSystemSolver linsys(comm, dms.ghosted1_1dof, iod.linear_options);
   double rtol, abstol, dtol;
   int maxits;
   linsys.GetTolerances(&rtol, &abstol, &dtol, &maxits);

@@ -3555,7 +3555,7 @@ void SpecialToolsData::setup(const char *name, ClassAssigner *father)
 
 //------------------------------------------------------------------------------
 
-PETScKSPOptionsData::PETScKSPOptionsData()
+LinearSolverData::LinearSolverData()
 {
   // solver options
   ksp = KSP_DEFAULT;
@@ -3571,32 +3571,32 @@ PETScKSPOptionsData::PETScKSPOptionsData()
 
 //------------------------------------------------------------------------------
 
-void PETScKSPOptionsData::setup(const char *name, ClassAssigner *father)
+void LinearSolverData::setup(const char *name, ClassAssigner *father)
 {
 
   ClassAssigner *ca = new ClassAssigner(name, 7, father);
 
-  new ClassToken<PETScKSPOptionsData> (ca, "Type", this,
-     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::ksp), 3,
+  new ClassToken<LinearSolverData> (ca, "Type", this,
+     reinterpret_cast<int LinearSolverData::*>(&LinearSolverData::ksp), 3,
      "Default", 0, "GMRes", 1, "FlexibleGMRes", 2);
 
-  new ClassToken<PETScKSPOptionsData> (ca, "Preconditioner", this,
-     reinterpret_cast<int PETScKSPOptionsData::*>(&PETScKSPOptionsData::pc), 6,
+  new ClassToken<LinearSolverData> (ca, "Preconditioner", this,
+     reinterpret_cast<int LinearSolverData::*>(&LinearSolverData::pc), 6,
      "Default", 0, "None", 1, "Jacobi", 2, "IncompleteLU", 3, "IncompleteCholesky", 4,
      "MultiGrid", 5);
 
-  new ClassDouble<PETScKSPOptionsData>(ca, "RelativeErrorTolerance", this,
-                                       &PETScKSPOptionsData::rtol);
+  new ClassDouble<LinearSolverData>(ca, "RelativeErrorTolerance", this,
+                                       &LinearSolverData::rtol);
 
-  new ClassDouble<PETScKSPOptionsData>(ca, "AbsoluteErrorTolerance", this,
-                                       &PETScKSPOptionsData::abstol);
+  new ClassDouble<LinearSolverData>(ca, "AbsoluteErrorTolerance", this,
+                                       &LinearSolverData::abstol);
 
-  new ClassDouble<PETScKSPOptionsData>(ca, "DivergenceTolerance", this,
-                                       &PETScKSPOptionsData::dtol);
+  new ClassDouble<LinearSolverData>(ca, "DivergenceTolerance", this,
+                                       &LinearSolverData::dtol);
 
-  new ClassInt<PETScKSPOptionsData>(ca, "MaxIts", this, &PETScKSPOptionsData::maxits);
+  new ClassInt<LinearSolverData>(ca, "MaxIts", this, &LinearSolverData::maxits);
 
-  new ClassStr<PETScKSPOptionsData>(ca, "PETScOptionsFile", this, &PETScKSPOptionsData::options_file);
+  new ClassStr<LinearSolverData>(ca, "PETScOptionsFile", this, &LinearSolverData::options_file);
 
 }
 
@@ -3782,7 +3782,7 @@ void IoData::setupCmdFileVariables()
 
   terminal_visualization.setup("TerminalVisualization");
 
-  petsc_ksp_options.setup("LinearSystemSolver");
+  linear_options.setup("LinearSystemSolver");
 
   poisson.setup("PoissonEquation");
 }

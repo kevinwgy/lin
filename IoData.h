@@ -1628,7 +1628,7 @@ struct SpecialToolsData {
 
 //------------------------------------------------------------------------------
 
-struct PETScKSPOptionsData {
+struct LinearSolverData {
 
   enum KSPType {KSP_DEFAULT = 0, GMRES = 1, FLEXIBLE_GMRES = 2} ksp;
   enum PCType {PC_DEFAULT = 0, PC_NONE = 1, JACOBI = 2, INCOMPLETE_LU = 3, INCOMPLETE_CHOLESKY = 4,
@@ -1641,8 +1641,8 @@ struct PETScKSPOptionsData {
 
   const char *options_file; //!< additional options can be specified through a file
 
-  PETScKSPOptionsData();
-  ~PETScKSPOptionsData() {}
+  LinearSolverData();
+  ~LinearSolverData() {}
 
   void setup(const char *, ClassAssigner * = 0);
 };
@@ -1704,7 +1704,7 @@ public:
 
   TerminalVisualizationData terminal_visualization;
 
-  PETScKSPOptionsData petsc_ksp_options;
+  LinearSolverData linear_options;
 
   PoissonEquationData poisson;
 
