@@ -55,8 +55,10 @@ int main(int argc, char* argv[])
   verbose = iod.output.verbose;
   iod.finalize();
 
+/*
   print("Max Int = %d.\n", INT_MAX);
   print("Max long int = %lld.\n", LONG_MAX);
+*/
 
   //! Calculate mesh coordinates
   vector<double> xcoords, dx, ycoords, dy, zcoords, dz;
@@ -147,7 +149,15 @@ int main(int argc, char* argv[])
         ((double)(clock()-timing1))/CLOCKS_PER_SEC);
 
   mpi_barrier(); timing1 = clock();
-  linsys.Solve(B,X);
+
+  vector<double> lin_rnorm;
+  bool lin_success = linsys.Solve(B, X, NULL, NULL, &lin_rnorm);
+  if(!lin_success) {
+    print_warning("  x Warning: Linear solver failed to converge.\n");
+    for(int i=0; i<(int)lin_rnorm.size(); i++)
+      print_warning("    > It. %d: residual = %e.\n", i+1, lin_rnorm[i]);
+  }
+
   mpi_barrier();
   print("Computation time for solving AX=B by PETSc: %f sec.\n",
         ((double)(clock()-timing1))/CLOCKS_PER_SEC);

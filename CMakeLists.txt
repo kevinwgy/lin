@@ -53,7 +53,7 @@ add_definitions(-DLINEAR_SOLVER_TEST=2)
 #-----------------------------------------
 
 # add the executable
-add_executable(m2c_linsolve
+add_executable(linsolve
 Main.cpp
 IoData.cpp
 SpaceVariable.cpp
@@ -68,5 +68,5 @@ LinearSystemSolver.cpp
 Utils.cpp)
 
 # link to libraries
-target_link_libraries(m2c_linsolve petsc mpi parser)
-add_dependencies(m2c_linsolve extern_lib)
+target_link_libraries(linsolve petsc mpi parser)
+add_dependencies(linsolve extern_lib)
