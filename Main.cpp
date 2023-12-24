@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
   DataManagers3D dms(comm, xcoords.size(), ycoords.size(), zcoords.size());
 
   //! Let global_mesh find subdomain boundaries and neighbors
-  global_mesh.GetSubdomainInfo(comm, dms);
+  global_mesh.FindSubdomainInfo(comm, dms);
 
   //! Initialize space operator
   SpaceOperatorLite spo(comm, dms, iod, global_mesh);
@@ -106,8 +106,12 @@ int main(int argc, char* argv[])
   LinearSystemSolver linsys(comm, dms.ghosted1_1dof, iod.linear_options);
   double rtol, abstol, dtol;
   int maxits;
+  string ksp_type, pc_type;
   linsys.GetTolerances(&rtol, &abstol, &dtol, &maxits);
+  linsys.GetSolverType(&ksp_type, &pc_type);
   print("PETSc parameters...\n");
+  print("- solver: %s.\n", ksp_type.c_str());
+  print("- preconditioner: %s.\n", pc_type.c_str());
   print("- rtol: %e.\n", rtol);
   print("- abstol: %e.\n", abstol);
   print("- dtol: %e.\n", dtol);
@@ -116,6 +120,7 @@ int main(int argc, char* argv[])
   vector<RowEntries> row_entries;
   SpaceVariable3D X(comm, &(dms.ghosted1_1dof));
   SpaceVariable3D B(comm, &(dms.ghosted1_1dof));
+  SpaceVariable3D Res(comm, &(dms.ghosted1_1dof)); //residual
 
   mpi_barrier();
   clock_t timing1 = clock(); //for timing purpose only
@@ -147,26 +152,48 @@ int main(int argc, char* argv[])
   mpi_barrier();
   print("Computation time for building A in PETSc: %f sec.\n",
         ((double)(clock()-timing1))/CLOCKS_PER_SEC);
-
   mpi_barrier(); timing1 = clock();
 
-  vector<double> lin_rnorm;
-  bool lin_success = linsys.Solve(B, X, NULL, NULL, &lin_rnorm);
-  if(!lin_success) {
-    print_warning("  x Warning: Linear solver failed to converge.\n");
-    for(int i=0; i<(int)lin_rnorm.size(); i++)
-      print_warning("    > It. %d: residual = %e.\n", i+1, lin_rnorm[i]);
-  }
 
+  LinearSolverConvergenceReason reason;
+  int nIters(0);
+  vector<double> lin_rnorm;
+  bool lin_success = linsys.Solve(B, X, &reason, &nIters, &lin_rnorm);
   mpi_barrier();
   print("Computation time for solving AX=B by PETSc: %f sec.\n",
         ((double)(clock()-timing1))/CLOCKS_PER_SEC);
 
 
+  linsys.ComputeResidual(B, X, Res);
+  double res_1norm = Res.CalculateVectorOneNorm();
+  double res_2norm = Res.CalculateVectorTwoNorm();
+  double res_inorm = Res.CalculateVectorInfNorm();
+  
+  if(!lin_success) {
+    print_warning("  x Warning: Linear solver failed to converge.\n");
+    for(int i=0; i<(int)lin_rnorm.size(); i++)
+      print_warning("    > It. %d: residual = %e.\n", i+1, lin_rnorm[i]);
+  } else {
+    print("- Linear solver converged in %d iterations (code: %d).\n", nIters,
+          (int)reason);
+    print("- Residual 1-/2-/inf-norm: %e, %e, %e.\n", res_1norm, res_2norm, res_inorm);
+    for(int i=0; i<(int)lin_rnorm.size(); i++)
+      print("    > It. %d: residual = %e.\n", i+1, lin_rnorm[i]);
+
+    double res_L1norm = Res.CalculateFunctionL1NormConRec(global_mesh); //spo.GetMeshCellVolumes());
+    double res_L2norm = Res.CalculateFunctionL2NormConRec(global_mesh); //spo.GetMeshCellVolumes());
+    print("- Residual L1 and L2 norm (const. rec.): %e, %e.\n", res_L1norm, res_L2norm);
+  }
+
+/*
+  linsys.WriteToMatlabFile("A.txt", "A");
+  X.WriteToMatlabFile("X.txt", "X");
+  B.WriteToMatlabFile("B.txt", "B");
+  Res.WriteToMatlabFile("Res.txt", "Res");
+*/
+
   X.StoreMeshCoordinates(spo.GetMeshCoordinates());
   X.WriteToVTRFile("X.vtr","x");
-//  B.StoreMeshCoordinates(spo.GetMeshCoordinates());
-//  B.WriteToVTRFile("B.vtr","b");
 
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");
@@ -180,9 +207,11 @@ int main(int argc, char* argv[])
   //! finalize 
   //! In general, "Destroy" should be called for classes that store Petsc DMDA data (which need to be "destroyed").
   
+
   linsys.Destroy();
   X.Destroy();
   B.Destroy();
+  Res.Destroy();
 
   spo.Destroy();
   if(grad) {

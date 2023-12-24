@@ -26,7 +26,17 @@ GlobalMeshInfo::GlobalMeshInfo(std::vector<double> &x_glob_, std::vector<double>
   xyz_min[2] = z_glob.front() - 0.5*dz_glob.front();
   xyz_max[2] = z_glob.back()  + 0.5*dz_glob.back();
 
-  two_dimensional_mesh = (z_glob.size()==1);
+  one_dimensional_mesh = (y_glob.size()==1) && (z_glob.size()==1);
+
+  two_dimensional_mesh = (!one_dimensional_mesh) && (z_glob.size()==1);
+
+  NX = x_glob.size();
+  NY = y_glob.size();
+  NZ = z_glob.size();
+
+  domain_volume = ((x_glob[NX-1] + 0.5*dx_glob[NX-1]) - (x_glob[0] - 0.5*dx_glob[0]))
+                * ((y_glob[NY-1] + 0.5*dy_glob[NY-1]) - (y_glob[0] - 0.5*dy_glob[0]))
+                * ((z_glob[NZ-1] + 0.5*dz_glob[NZ-1]) - (z_glob[0] - 0.5*dz_glob[0]));
 }
 
 //------------------------------------------------------------------
@@ -37,7 +47,7 @@ GlobalMeshInfo::~GlobalMeshInfo()
 //------------------------------------------------------------------
 
 void
-GlobalMeshInfo::GetSubdomainInfo(MPI_Comm& comm, DataManagers3D& dms)
+GlobalMeshInfo::FindSubdomainInfo(MPI_Comm& comm, DataManagers3D& dms)
 {
   // Create a space variable only for use in this function. Destroyed at the end.
   SpaceVariable3D S(comm, &(dms.ghosted1_1dof));

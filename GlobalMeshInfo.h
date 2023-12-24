@@ -33,7 +33,7 @@ class GlobalMeshInfo {
 private:
 
   /** Neighbors of all processor cores/subdomains, indexed w/ proc id.
-      The neighbors of each subdomain follow a certain order. See GetSubdomainInfo(...) in the .cpp file. **/
+      The neighbors of each subdomain follow a certain order. See FindSubdomainInfo(...) in the .cpp file. **/
   std::vector<std::vector<int> > subD_neighbors_27; //!< all 27 neighbors, including self and non-exist ones
   std::vector<std::vector<int> > subD_neighbors_all; //!< all real neighbors, w/o self and non-exist ones
   std::vector<std::vector<int> > subD_neighbors_19; //!< 27 - 8 corners
@@ -41,7 +41,9 @@ private:
   std::vector<std::vector<int> > subD_neighbors_7; //!< 19 - 12 edges 
   std::vector<std::vector<int> > subD_neighbors_face; //!< only real neighbors with face-contact (at most 6)
 
-  bool two_dimensional_mesh; //!< set to true if z has only one element
+  bool one_dimensional_mesh; //!< set to true if y and z have only one element
+
+  bool two_dimensional_mesh; //!< set to true if (only) z has only one element
 
 public:
 
@@ -49,6 +51,9 @@ public:
   std::vector<double> dx_glob, dy_glob, dz_glob;
 
   Vec3D xyz_min, xyz_max; //!< boundary of the physical domain (up to cell boundaries)
+  int NX, NY, NZ;
+
+  double domain_volume; //!< does not include ghost layer
 
   std::vector<Vec3D> subD_xyz_min, subD_xyz_max; //!< actual boundaries of subs, up to cell boundaries
   std::vector<Int3> subD_ijk_min, subD_ijk_max; //!< Note: "max" is max index + 1 
@@ -62,7 +67,7 @@ public:
   ~GlobalMeshInfo();
 
   //! Setup the subD_xxx vectors
-  void GetSubdomainInfo(MPI_Comm& comm, DataManagers3D& dms);
+  void FindSubdomainInfo(MPI_Comm& comm, DataManagers3D& dms);
 
   //! Get specific info 
   double GetXmin() {return xyz_min[0];}
@@ -91,11 +96,29 @@ public:
   Vec3D GetDXYZ(Int3 ijk);
   Vec3D GetDXYZ(int i, int j, int k);
 
+  bool IsMesh1D() {return one_dimensional_mesh;}
+
   bool IsMesh2D() {return two_dimensional_mesh;}
 
   //! If mesh is 2D, only consider dx and dy
   double GetMinDXYZ(Int3 ijk);
   double GetMaxDXYZ(Int3 ijk);
+
+  //! Duplicate of function in SpaceVariable (checking nodes/cells)
+  inline bool OutsidePhysicalDomain(int i, int j, int k) {
+    return (i<0 || i>=NX || j<0 || j>=NY || k<0 || k>=NZ);}
+
+  //! Duplicate of function in SpaceVariable (checking nodes/cells)
+  inline bool OutsidePhysicalDomainAndUnpopulated(int i, int j, int k)
+  {
+    int count = 0;
+    if(i<0 || i>=NX) count++;
+    if(j<0 || j>=NY) count++;
+    if(k<0 || k>=NZ) count++;
+    if(count>1)
+      return true;
+    return false;
+  }
 
   //! Determine is a point is inside the domain (formed by control volumes / cells)
   bool IsPointInDomain(Vec3D &p, bool include_ghost_layer = false);
