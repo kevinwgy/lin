@@ -1,0 +1,6 @@
+# Options in this file overrides those in the main input file
+# Recommendation 1: fgmres + bjacobi
+# Recommendation 2: ibcgs + bjacobi (or none)
+# Recommendation 3: bcgsl + bjacobi (or none)
+-ksp_type ibcgs 
+-pc_type bjacobi 
