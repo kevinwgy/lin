@@ -1,0 +1,2 @@
+## Solution of linear systems - Log file.
+o Linear solver converged.

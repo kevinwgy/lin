@@ -6,9 +6,12 @@ under Mesh {
   Z0   = -1.0;
   Zmax =  1.0;
 
-  NumberOfCellsX = 200;
-  NumberOfCellsY = 400;
-  NumberOfCellsZ = 200;
+  //NumberOfCellsX = 100;
+  //NumberOfCellsY = 200;
+  //NumberOfCellsZ = 100;
+  NumberOfCellsX = 20;
+  NumberOfCellsY = 40;
+  NumberOfCellsZ = 20;
 }
 
 
@@ -30,9 +33,9 @@ under PoissonEquation {
 
 
 under LinearSystemSolver {
-  Type = FlexibleGMRes;
-  Preconditioner = BlockJacobi;
-  RelativeErrorTolerance = 1.0e-4;
-
-  PETScOptionsFile = "petsc_options.txt";
+  Type = FlexibleGMRes; //or StabilizedBiCG or ImprovedStabilizedBiCG
+  Preconditioner = BlockJacobi; //or None or Jacobe or MultiGrid
+  //PrintLogToScreen = No;
+  LogFile = "linlog.txt";
+  PETScOptionsFile = "petsc_options.txt"; //any other PETSc option/param
 }

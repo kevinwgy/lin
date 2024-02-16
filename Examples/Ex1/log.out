@@ -1,11 +1,11 @@
 
 - Mesh Statistics:
-  X-Direction: [-1.000000e+00, 1.000000e+00], 200 nodes/cells, dx_min = 1.000000e-02, dx_max = 1.000000e-02.
-  Y-Direction: [-2.000000e+00, 2.000000e+00], 400 nodes/cells, dy_min = 1.000000e-02, dy_max = 1.000000e-02.
-  Z-Direction: [-1.000000e+00, 1.000000e+00], 200 nodes/cells, dz_min = 1.000000e-02, dz_max = 1.000000e-02.
-  Total number of nodes/cells: 16000000.
-  o Number of ghost nodes inside computational domain (overlapping between subdomains): 1568504
-  o Number of ghost nodes outside computational domain: 429320
+  X-Direction: [-1.000000e+00, 1.000000e+00], 20 nodes/cells, dx_min = 1.000000e-01, dx_max = 1.000000e-01.
+  Y-Direction: [-2.000000e+00, 2.000000e+00], 40 nodes/cells, dy_min = 1.000000e-01, dy_max = 1.000000e-01.
+  Z-Direction: [-1.000000e+00, 1.000000e+00], 20 nodes/cells, dz_min = 1.000000e-01, dz_max = 1.000000e-01.
+  Total number of nodes/cells: 16000.
+  o Number of ghost nodes inside computational domain (overlapping between subdomains): 0
+  o Number of ghost nodes outside computational domain: 4328
 
 
 ----------------------------
@@ -13,20 +13,20 @@
 ----------------------------
 PETSc parameters...
 - solver: ibcgs.
-- preconditioner: bjacobi.
-- rtol: 1.000000e-04.
+- preconditioner: none.
+- rtol: 1.000000e-05.
 - abstol: 1.000000e-50.
 - dtol: 1.000000e+04.
 - maxits: 10000.
-Computation time for building A, B, X outside PETSc: 0.060000 sec.
-Computation time for building A in PETSc: 0.130000 sec.
-Computation time for solving AX=B by PETSc: 4.690000 sec.
-- Linear solver converged in 122 iterations (code: 1).
-- Residual 1-/2-/inf-norm: 1.807508e+06, 6.201017e+02, 1.203030e+00.
-- Residual L1 and L2 norm (const. rec.): 1.807508e+00, 6.201017e-01.
+Computation time for building A, B, X outside PETSc: 0.000000 sec.
+Computation time for building A in PETSc: 0.010000 sec.
+Computation time for solving AX=B by PETSc: 0.010000 sec.
+- Linear solver converged in 48 iterations (code: 1).
+- Residual 1-/2-/inf-norm: 1.761554e+01, 1.820021e-01, 3.773000e-03.
+- Residual L1 and L2 norm (const. rec.): 1.761554e-02, 5.755412e-03.
 
 [0;32m==========================================[0m
 [0;32m   NORMAL TERMINATION (t = 0.000000e+00)  [0m
 [0;32m==========================================[0m
-Total Computation Time: 5.580000 sec.
+Total Computation Time: 0.050000 sec.
 
