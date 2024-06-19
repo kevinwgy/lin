@@ -195,6 +195,7 @@ int main(int argc, char* argv[])
   X.StoreMeshCoordinates(spo.GetMeshCoordinates());
   X.WriteToVTRFile("X.vtr","x");
 
+
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");
   print("\033[0;32m   NORMAL TERMINATION (t = %e)  \033[0m\n", t); 
