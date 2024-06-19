@@ -196,6 +196,14 @@ int main(int argc, char* argv[])
   X.WriteToVTRFile("X.vtr","x");
 
 
+  double lambda_max(0.0), lambda_min(0.0);
+  linsys.CalculateExtremeSingularValues(lambda_max, lambda_min);
+  print("\n");
+  print("- Extreme singular values: %e (max), %e (min, estimate).\n", lambda_max, lambda_min);
+  double cond = linsys.EstimateConditionNumber();
+  print("- Condition number (estimate): %e.\n", cond);
+  
+
   print("\n");
   print("\033[0;32m==========================================\033[0m\n");
   print("\033[0;32m   NORMAL TERMINATION (t = %e)  \033[0m\n", t); 
