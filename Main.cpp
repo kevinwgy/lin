@@ -26,7 +26,7 @@
 
 int verbose;
 MPI_Comm m2c_comm;
-clock_t start_time;
+double start_time;
 
 
 //-------------------------------------------------
@@ -43,10 +43,10 @@ void BuildLinearSystemEx2(PoissonEquationData &poisson, GlobalMeshInfo &global_m
  ************************************/
 int main(int argc, char* argv[])
 {
-  start_time = clock(); //for timing purpose only
 
   //! Initialize MPI 
   MPI_Init(NULL,NULL); //called together with all concurrent programs -> MPI_COMM_WORLD
+  start_time = walltime();
   MPI_Comm comm = MPI_COMM_WORLD;
   m2c_comm = comm;
 
@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
   SpaceVariable3D Res(comm, &(dms.ghosted1_1dof)); //residual
 
   mpi_barrier();
-  clock_t timing1 = clock(); //for timing purpose only
+  double timing1 = walltime();
 
 #if LINEAR_SOLVER_TEST == 1
   BuildLinearSystemEx1(spo.GetMeshCoordinates(), row_entries, B, X);
@@ -134,8 +134,7 @@ int main(int argc, char* argv[])
 #endif
 
   mpi_barrier();
-  print("Computation time for building A, B, X outside PETSc: %f sec.\n",
-        ((double)(clock()-timing1))/CLOCKS_PER_SEC);
+  print("Computation time for building A, B, X outside PETSc: %f sec.\n", walltime()-timing1);
 
 //  int mpi_rank;
 //  MPI_Comm_rank(comm, &mpi_rank);
@@ -147,12 +146,11 @@ int main(int argc, char* argv[])
 //  exit_mpi();
 
 
-  mpi_barrier(); timing1 = clock();
+  mpi_barrier(); timing1 = walltime();
   linsys.SetLinearOperator(row_entries);
   mpi_barrier();
-  print("Computation time for building A in PETSc: %f sec.\n",
-        ((double)(clock()-timing1))/CLOCKS_PER_SEC);
-  mpi_barrier(); timing1 = clock();
+  print("Computation time for building A in PETSc: %f sec.\n", walltime()-timing1);
+  mpi_barrier(); timing1 = walltime();
 
 
   LinearSolverConvergenceReason reason;
@@ -160,8 +158,7 @@ int main(int argc, char* argv[])
   vector<double> lin_rnorm;
   bool lin_success = linsys.Solve(B, X, &reason, &nIters, &lin_rnorm);
   mpi_barrier();
-  print("Computation time for solving AX=B by PETSc: %f sec.\n",
-        ((double)(clock()-timing1))/CLOCKS_PER_SEC);
+  print("Computation time for solving AX=B by PETSc: %f sec.\n", walltime()-timing1);
 
 
   linsys.ComputeResidual(B, X, Res);
@@ -208,7 +205,7 @@ int main(int argc, char* argv[])
   print("\033[0;32m==========================================\033[0m\n");
   print("\033[0;32m   NORMAL TERMINATION (t = %e)  \033[0m\n", t); 
   print("\033[0;32m==========================================\033[0m\n");
-  print("Total Computation Time: %f sec.\n", ((double)(clock()-start_time))/CLOCKS_PER_SEC);
+  print("Total Computation Time: %f sec.\n", walltime()-start_time);
   print("\n");
 
 

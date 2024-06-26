@@ -203,6 +203,13 @@ void mpi_barrier()
 }
 
 //--------------------------------------------------
+
+double walltime()
+{
+  return MPI_Wtime(); //returns wall-clock time in seconds
+}
+
+//--------------------------------------------------
 // MPI Rank 0 will print to a file
 void print(MPI_Comm& comm, FILE* fd, const char format[],...)
 {
