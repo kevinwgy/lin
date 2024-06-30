@@ -156,7 +156,8 @@ int main(int argc, char* argv[])
   LinearSolverConvergenceReason reason;
   int nIters(0);
   vector<double> lin_rnorm;
-  bool lin_success = linsys.Solve(B, X, &reason, &nIters, &lin_rnorm);
+  vector<int>    lin_rnorm_its;
+  bool lin_success = linsys.Solve(B, X, &reason, &nIters, &lin_rnorm, &lin_rnorm_its);
   mpi_barrier();
   print("Computation time for solving AX=B by PETSc: %f sec.\n", walltime()-timing1);
 
@@ -169,13 +170,13 @@ int main(int argc, char* argv[])
   if(!lin_success) {
     print_warning("  x Warning: Linear solver failed to converge.\n");
     for(int i=0; i<(int)lin_rnorm.size(); i++)
-      print_warning("    > It. %d: residual = %e.\n", i+1, lin_rnorm[i]);
+      print_warning("    > It. %d: residual = %e.\n", lin_rnorm_its[i]+1, lin_rnorm[i]);
   } else {
     print("- Linear solver converged in %d iterations (code: %d).\n", nIters,
           (int)reason);
     print("- Residual 1-/2-/inf-norm: %e, %e, %e.\n", res_1norm, res_2norm, res_inorm);
     for(int i=0; i<(int)lin_rnorm.size(); i++)
-      print("    > It. %d: residual = %e.\n", i+1, lin_rnorm[i]);
+      print("    > It. %d: residual = %e.\n", lin_rnorm_its[i]+1, lin_rnorm[i]);
 
     double res_L1norm = Res.CalculateFunctionL1NormConRec(global_mesh); //spo.GetMeshCellVolumes());
     double res_L2norm = Res.CalculateFunctionL2NormConRec(global_mesh); //spo.GetMeshCellVolumes());
